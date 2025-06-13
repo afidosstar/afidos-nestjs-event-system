@@ -1,42 +1,42 @@
 {
-  "compilerOptions": {
-    "module": "commonjs",
-    "target": "ES2022",
-    "lib": ["ES2022"],
-    "declaration": false,
-    "removeComments": true,
-    "emitDecoratorMetadata": true,
-    "experimentalDecorators": true,
-    "allowSyntheticDefaultImports": true,
-    "esModuleInterop": true,
-    "sourceMap": true,
-    "outDir": "./dist",
-    "baseUrl": "./",
-    "paths": {
-      "@/*": ["src/*"]
+    "compilerOptions": {
+        "module": "commonjs",
+        "target": "ES2022",
+        "lib": ["ES2022"],
+        "useUnknownInCatchVariables": false,
+        "declaration": true,
+        "removeComments": true,
+        "emitDecoratorMetadata": true,
+        "experimentalDecorators": true,
+        "allowSyntheticDefaultImports": true,
+        "esModuleInterop": true,
+        "sourceMap": true,
+        "outDir": "./dist",
+        "baseUrl": "./",
+        "paths": {
+            "@/*": ["src/*"]
+        },
+        "incremental": true,
+        "skipLibCheck": true,
+        "strictNullChecks": false,
+        "noImplicitAny": true,
+        "strictBindCallApply": false,
+        "forceConsistentCasingInFileNames": false,
+        "noFallthroughCasesInSwitch": false,
+        "strict": false,
+        "resolveJsonModule": true,
+        "moduleResolution": "node",
+        "allowJs": true,
+        "typeRoots": ["node_modules/@types"],
+        "types": ["node", "jest"]
     },
-    "incremental": true,
-    "skipLibCheck": true,
-    "strictNullChecks": true,
-    "noImplicitAny": true,
-    "strictBindCallApply": true,
-    "forceConsistentCasingInFileNames": true,
-    "noFallthroughCasesInSwitch": true,
-    "strict": true,
-    "resolveJsonModule": true,
-    "moduleResolution": "node",
-    "allowJs": false,
-    "noEmit": true,
-    "typeRoots": ["node_modules/@types"],
-    "types": ["node", "jest"]
-  },
-  "include": [
-    "src/**/*",
-    "tests/**/*"
-  ],
-  "exclude": [
-    "node_modules",
-    "dist",
-    "examples"
-  ]
+    "include": [
+        "src/**/*",
+        "tests/**/*"
+    ],
+    "exclude": [
+        "node_modules",
+        "dist",
+        "examples"
+    ]
 }

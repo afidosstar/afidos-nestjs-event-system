@@ -1,47 +1,75 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
-import {FieldSchema, NotificationChannel, RateLimitConfig, RetryPolicy} from "@/config";
+import {
+    Entity,
+    PrimaryGeneratedColumn,
+    Column,
+    CreateDateColumn,
+    UpdateDateColumn,
+    Index
+} from 'typeorm';
+import { NotificationChannel, ProcessingMode, EventPriority } from '../types/interfaces';
 
+/**
+ * Entité pour stocker la configuration des types d'événements
+ */
 @Entity('event_types')
-export class EventType {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+@Index(['name'], { unique: true })
+export class EventTypeEntity {
+    @PrimaryGeneratedColumn('uuid')
+    id: string;
 
-  @Column({ unique: true })
-  name: string;
+    @Column({ type: 'varchar', length: 255, unique: true })
+    name: string;
 
-  @Column()
-  description: string;
+    @Column({ type: 'text' })
+    description: string;
 
-  @Column('jsonb')
-  schema: Record<string, FieldSchema>;
+    @Column({ type: 'json' })
+    channels: NotificationChannel[];
 
-  @Column('simple-array')
-  channels: NotificationChannel[];
+    @Column({
+        type: 'enum',
+        enum: ['sync', 'async'],
+        default: 'async'
+    })
+    defaultProcessing: ProcessingMode;
 
-  @Column({ default: 'async' })
-  defaultProcessing: 'sync' | 'async';
+    @Column({ type: 'boolean', default: false })
+    waitForResult: boolean;
 
-  @Column({ default: false })
-  waitForResult: boolean;
+    @Column({ type: 'integer', default: 3 })
+    retryAttempts: number;
 
-  @Column('jsonb', { nullable: true })
-  templates?: Record<string, string>;
+    @Column({
+        type: 'enum',
+        enum: ['low', 'normal', 'high'],
+        default: 'normal'
+    })
+    priority: EventPriority;
 
-  @Column('jsonb', { nullable: true })
-  retryPolicy?: RetryPolicy;
+    @Column({ type: 'integer', nullable: true })
+    delay: number;
 
-  @Column('jsonb', { nullable: true })
-  rateLimiting?: RateLimitConfig;
+    @Column({ type: 'integer', default: 30000 })
+    timeout: number;
 
-  @Column({ default: 'normal' })
-  priority: 'low' | 'normal' | 'high';
+    @Column({ type: 'json', nullable: true })
+    schema: Record<string, any>;
 
-  @Column({ default: true })
-  enabled: boolean;
+    @Column({ type: 'json', nullable: true })
+    templates: Record<string, string>;
 
-  @CreateDateColumn()
-  createdAt: Date;
+    @Column({ type: 'boolean', default: true })
+    isActive: boolean;
 
-  @UpdateDateColumn()
-  updatedAt: Date;
+    @CreateDateColumn()
+    createdAt: Date;
+
+    @UpdateDateColumn()
+    updatedAt: Date;
+
+    @Column({ type: 'varchar', length: 255, nullable: true })
+    createdBy: string;
+
+    @Column({ type: 'varchar', length: 255, nullable: true })
+    updatedBy: string;
 }

@@ -63,7 +63,7 @@ export abstract class NotificationProvider<TChannel extends keyof Recipient = an
     /**
      * Extrait l'adresse du recipient (à override si property n'est pas utilisé)
      */
-    protected extractAddress(recipient: Recipient): string {
+    protected extractAddress(_recipient: Recipient): string {
         throw new Error(`extractAddress must be implemented in ${this.getProviderName()} or property must be defined`);
     }
 
@@ -111,7 +111,7 @@ export abstract class NotificationProvider<TChannel extends keyof Recipient = an
      * Détermine si on doit envoyer la notification à ce destinataire
      * Vérifie les préférences, l'horaire, etc.
      */
-    protected shouldSendToRecipient(recipient: Recipient, eventType: string, payload: any): boolean {
+    protected shouldSendToRecipient(recipient: Recipient, _eventType: string, _payload: any): boolean {
         // Vérifier si les notifications sont activées pour ce destinataire
         if (recipient.preferences?.enabled === false) {
             return false;
@@ -135,7 +135,7 @@ export abstract class NotificationProvider<TChannel extends keyof Recipient = an
      * Valide la configuration du provider
      * Peut être surchargée par les providers concrets
      */
-    validateConfig(config: any): boolean | string[] {
+    validateConfig(_config: any): boolean | string[] {
         return true;
     }
 }

@@ -1,4 +1,4 @@
-import { Injectable, Logger, Inject } from '@nestjs/common';
+import {Injectable, Logger, Inject, Optional, forwardRef} from '@nestjs/common';
 import {
     EventPayloads,
     EventTypesConfig,
@@ -18,8 +18,8 @@ export class EventEmitterService<T extends EventPayloads = EventPayloads> {
     private readonly logger = new Logger(EventEmitterService.name);
 
     constructor(
-        @Inject(EVENT_TYPES_CONFIG) private readonly eventConfig: EventTypesConfig<T>,
-        private readonly queueManager: QueueManagerService
+        @Inject(forwardRef(() =>EVENT_TYPES_CONFIG)) private readonly eventConfig: EventTypesConfig<T>,
+        @Optional() @Inject(forwardRef(() => QueueManagerService)) private readonly queueManager?: QueueManagerService
     ) {}
 
     /**
@@ -48,6 +48,10 @@ export class EventEmitterService<T extends EventPayloads = EventPayloads> {
         };
 
         // Délègue au QueueManager qui décidera du traitement (immédiat ou queue)
+        if (!this.queueManager) {
+            throw new Error('QueueManager not available. Module may not be properly configured.');
+        }
+
         return await this.queueManager.processEvent(
             eventType.toString(),
             payload,
@@ -82,6 +86,10 @@ export class EventEmitterService<T extends EventPayloads = EventPayloads> {
         };
 
         // Force le mode sync pour emitSync
+        if (!this.queueManager) {
+            throw new Error('QueueManager not available. Module may not be properly configured.');
+        }
+
         return await this.queueManager.processEvent(
             eventType.toString(),
             payload,

@@ -1,4 +1,4 @@
-import { Injectable, Inject, Logger } from '@nestjs/common';
+import {Injectable, Inject, Logger, Optional, forwardRef} from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
 import {
     EventTypesConfig,
@@ -24,9 +24,9 @@ export class NotificationOrchestratorService {
     private readonly logger = new Logger(NotificationOrchestratorService.name);
 
     constructor(
-        @Inject(EVENT_TYPES_CONFIG) private readonly eventTypesConfig: EventTypesConfig,
+        @Inject(forwardRef(() => EVENT_TYPES_CONFIG)) private readonly eventTypesConfig: EventTypesConfig,
         private readonly moduleRef: ModuleRef,
-        private readonly recipientLoader: RecipientLoader
+        @Optional() private readonly recipientLoader?: RecipientLoader
     ) {}
 
     /**
@@ -48,6 +48,11 @@ export class NotificationOrchestratorService {
             }
 
             // 2. Charge les destinataires pour cet événement
+            if (!this.recipientLoader) {
+                this.logger.warn(`Aucun RecipientLoader configuré pour l'événement: ${eventType}`);
+                return [];
+            }
+
             const recipients = await this.recipientLoader.load(eventType, payload);
             if (!recipients || recipients.length === 0) {
                 this.logger.warn(`Aucun destinataire trouvé pour l'événement: ${eventType}`);

@@ -165,7 +165,7 @@ export interface PackageConfig<T extends EventPayloads = EventPayloads> {
     queue?: QueueConfig;
 
     /** Mode de fonctionnement */
-    mode?: 'worker' | 'hybrid';
+    mode?: 'api' | 'worker' | 'hybrid';
 
     /** Préfixe pour les tables de base de données */
     tablePrefix?: string;

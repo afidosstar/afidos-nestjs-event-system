@@ -1,4 +1,4 @@
-import { DynamicModule, Module } from '@nestjs/common';
+import { DynamicModule, Module, forwardRef } from '@nestjs/common';
 import {
     EventPayloads,
     PackageConfig,
@@ -10,13 +10,16 @@ import {
 import { EventEmitterService } from '../services/event-emitter.service';
 import { NotificationOrchestratorService } from '../services/notification-orchestrator.service';
 import { QueueManagerService } from '../services/queue-manager.service';
+import {symbol} from "joi";
+import * as console from "node:console";
+import {HttpDriver} from "@/drivers/http.driver";
 
 /**
  * Configuration tokens pour l'injection de dépendances
  */
-export const EVENT_NOTIFICATIONS_CONFIG = 'EVENT_NOTIFICATIONS_CONFIG';
-export const EVENT_TYPES_CONFIG = 'EVENT_TYPES_CONFIG';
-export const PROVIDERS_CONFIG = 'PROVIDERS_CONFIG';
+export const EVENT_NOTIFICATIONS_CONFIG = Symbol('EVENT_NOTIFICATIONS_CONFIG');
+export const EVENT_TYPES_CONFIG = Symbol('EVENT_TYPES_CONFIG');
+export const PROVIDERS_CONFIG = Symbol( 'PROVIDERS_CONFIG');
 
 /**
  * Module principal pour les notifications d'événements
@@ -30,6 +33,18 @@ export class EventNotificationsModule {
     static forRoot<T extends EventPayloads = EventPayloads>(
         config: PackageConfig<T>
     ): DynamicModule {
+        console.log({
+                provide: EVENT_NOTIFICATIONS_CONFIG,
+                useValue: config,
+            },
+            {
+                provide: EVENT_TYPES_CONFIG,
+                useValue: config.eventTypes,
+            },
+            {
+                provide: PROVIDERS_CONFIG,
+                useValue: config.providers || {},
+            });
         return {
             module: EventNotificationsModule,
             providers: [
@@ -94,7 +109,13 @@ export class EventNotificationsModule {
                 },
                 EventEmitterService,
                 NotificationOrchestratorService,
-                QueueManagerService
+                QueueManagerService,
+                // {
+                //     provide: HttpDriver,
+                //     useFactory: async () =>{
+                //         return new HttpDriver()
+                //     }
+                // }
             ],
             exports: [
                 EventEmitterService,
@@ -129,6 +150,7 @@ export class EventNotificationsModule {
                     provide: PROVIDERS_CONFIG,
                     useValue: config.providers,
                 },
+
                 EventEmitterService,
                 NotificationOrchestratorService,
                 QueueManagerService

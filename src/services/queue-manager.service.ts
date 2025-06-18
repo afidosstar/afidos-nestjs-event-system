@@ -1,4 +1,4 @@
-import { Injectable, Inject, Logger, Optional } from '@nestjs/common';
+import { Injectable, Inject, Logger, Optional, forwardRef } from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
 import {
     QueueConfig,
@@ -20,7 +20,7 @@ export interface QueueProvider {
 
 /**
  * Service de gestion de la queue avec support des différents modes
- * 
+ *
  * Modes supportés :
  * - 'api' : Traitement immédiat uniquement, pas de queue
  * - 'worker' : Queue obligatoire, traitement différé uniquement
@@ -34,13 +34,13 @@ export class QueueManagerService {
     private readonly queueConfig?: QueueConfig;
 
     constructor(
-        @Inject(EVENT_NOTIFICATIONS_CONFIG) private readonly config: PackageConfig,
-        @Optional() private readonly orchestrator?: NotificationOrchestratorService,
+        @Inject(forwardRef(() =>EVENT_NOTIFICATIONS_CONFIG)) private readonly config: PackageConfig,
+        @Optional() @Inject(NotificationOrchestratorService) private readonly orchestrator?: NotificationOrchestratorService,
         private readonly moduleRef?: ModuleRef
     ) {
         this.mode = this.config.mode || 'api';
         this.queueConfig = this.config.queue;
-        
+
         this.validateConfiguration();
         this.initializeQueue();
     }
@@ -84,22 +84,22 @@ export class QueueManagerService {
             // Ici on pourrait utiliser Bull, BullMQ, ou autre
             // Pour l'exemple, on simule une queue provider
             this.queueProvider = await this.createQueueProvider();
-            
+
             // En mode worker, on démarre le traitement des jobs
             if (this.mode === 'worker') {
                 await this.startWorkerMode();
             }
-            
+
             this.logger.log('Queue initialisée avec succès');
-            
+
         } catch (error) {
             this.logger.error(`Erreur lors de l'initialisation de la queue: ${error.message}`);
-            
+
             // En mode worker, c'est fatal
             if (this.mode === 'worker') {
                 throw error;
             }
-            
+
             // En mode hybrid, on continue sans queue
             this.logger.warn('Fonctionnement en mode direct sans queue');
         }
@@ -115,10 +115,10 @@ export class QueueManagerService {
         options: EmitOptions = {}
     ): Promise<EventEmissionResult> {
         const startTime = Date.now();
-        
+
         // Détermine le mode de traitement
         const processingMode = this.determineProcessingMode(eventType, options);
-        
+
         this.logger.debug(
             `Traitement événement ${eventType} en mode ${processingMode} ` +
             `(mode global: ${this.mode})`
@@ -127,10 +127,10 @@ export class QueueManagerService {
         switch (processingMode) {
             case 'immediate':
                 return await this.processImmediate(eventType, payload, context, startTime);
-                
+
             case 'queued':
                 return await this.processQueued(eventType, payload, context, options, startTime);
-                
+
             default:
                 throw new Error(`Mode de traitement non supporté: ${processingMode}`);
         }
@@ -155,14 +155,14 @@ export class QueueManagerService {
             // Force dans les options
             if (options.mode === 'sync') return 'immediate';
             if (options.mode === 'async') return this.queueProvider ? 'queued' : 'immediate';
-            
+
             // Configuration de l'événement
             const eventConfig = (this.config.eventTypes as any)[eventType];
             if (eventConfig?.defaultProcessing === 'sync') return 'immediate';
             if (eventConfig?.defaultProcessing === 'async') {
                 return this.queueProvider ? 'queued' : 'immediate';
             }
-            
+
             // Par défaut en hybrid : queue si disponible
             return this.queueProvider ? 'queued' : 'immediate';
         }
@@ -231,7 +231,7 @@ export class QueueManagerService {
         };
 
         await this.queueProvider.add('process-notification', queuedEvent, queueOptions);
-        
+
         const processingDuration = Date.now() - startTime;
 
         this.logger.log(`Événement ${eventType} mis en queue avec délai ${queueOptions.delay}ms`);
@@ -262,7 +262,7 @@ export class QueueManagerService {
 
         await this.queueProvider.process('process-notification', async (job: any) => {
             const queuedEvent: QueuedEvent = job.data;
-            
+
             this.logger.debug(`Traitement job ${job.id} pour événement ${queuedEvent.eventType}`);
 
             const context: NotificationContext = {
@@ -306,19 +306,19 @@ export class QueueManagerService {
         // Ici on pourrait intégrer avec Bull/BullMQ
         // Pour l'exemple, on retourne un mock
         return {
-            async add(jobName: string, data: QueuedEvent, options?: any): Promise<any> {
+            async add(jobName: string, _data: QueuedEvent, _options?: any): Promise<any> {
                 this.logger.debug(`Mock: Job ${jobName} ajouté à la queue`);
                 return { id: `job-${Date.now()}` };
             },
-            
-            async process(jobName: string, processor: (job: any) => Promise<any>): Promise<void> {
+
+            async process(jobName: string, _processor: (job: any) => Promise<any>): Promise<void> {
                 this.logger.debug(`Mock: Processor enregistré pour ${jobName}`);
             },
-            
+
             async isHealthy(): Promise<boolean> {
                 return true;
             },
-            
+
             async close(): Promise<void> {
                 this.logger.log('Queue fermée');
             }
@@ -330,7 +330,7 @@ export class QueueManagerService {
      */
     async healthCheck(): Promise<{ queue: boolean, mode: string }> {
         const queueHealth = this.queueProvider ? await this.queueProvider.isHealthy() : false;
-        
+
         return {
             queue: queueHealth,
             mode: this.mode

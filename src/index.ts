@@ -6,11 +6,22 @@ import {EventPayloads, EventTypesConfig, NotificationProviderConfig, PackageConf
 
 // Module principal
 export { EventNotificationsModule } from './module/event-notifications.module';
+export { EventNotificationsRefactoredModule } from './module/event-notifications-refactored.module';
+export { EventNotificationsSimpleModule } from './module/event-notifications-simple.module';
 
 // Services
 export { EventEmitterService } from './services/event-emitter.service';
+export { EventEmitterSimpleService } from './services/event-emitter-simple.service';
 export { NotificationOrchestratorService } from './services/notification-orchestrator.service';
 export { QueueManagerService } from './services/queue-manager.service';
+export { EventBusService } from './services/event-bus.service';
+export { NotificationProcessorService } from './services/notification-processor.service';
+export { EventHandlerRegistryService } from './services/event-handler-registry.service';
+export { HandlerInitializerService } from './services/handler-initializer.service';
+
+// Interfaces et Handlers
+export { EventHandler } from './interfaces/event-handler.interface';
+export { NotificationEventHandler } from './handlers/notification-event.handler';
 
 // Drivers préconçus
 export { HttpDriver } from './drivers/http.driver';
@@ -78,6 +89,13 @@ export {
     EVENT_TYPES_CONFIG,
     PROVIDERS_CONFIG
 } from './module/event-notifications.module';
+
+// Tokens du module simple
+export {
+    EVENT_NOTIFICATIONS_CONFIG as SIMPLE_EVENT_NOTIFICATIONS_CONFIG,
+    EVENT_TYPES_CONFIG as SIMPLE_EVENT_TYPES_CONFIG,
+    PROVIDERS_CONFIG as SIMPLE_PROVIDERS_CONFIG
+} from './module/event-notifications-simple.module';
 
 
 // ================================

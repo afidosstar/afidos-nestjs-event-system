@@ -1,15 +1,12 @@
-import { DynamicModule, Module, forwardRef } from '@nestjs/common';
+import { DynamicModule, Module } from '@nestjs/common';
 import {
     EventPayloads,
-    PackageConfig,
-    NotificationProviderConfig,
-    QueueConfig
+    PackageConfig
 } from '../types/interfaces';
 
-// Services
-import { EventEmitterService } from '../services/event-emitter.service';
+// Services simplifiés
+import { EventEmitterSimpleService } from '../services/event-emitter-simple.service';
 import { NotificationOrchestratorService } from '../services/notification-orchestrator.service';
-import { QueueManagerService } from '../services/queue-manager.service';
 
 /**
  * Configuration tokens pour l'injection de dépendances
@@ -19,20 +16,21 @@ export const EVENT_TYPES_CONFIG = 'EVENT_TYPES_CONFIG';
 export const PROVIDERS_CONFIG = 'PROVIDERS_CONFIG';
 
 /**
- * Module principal pour les notifications d'événements
- * Architecture simplifiée avec drivers pré-configurés
+ * Module EventNotifications simplifié sans dépendances circulaires
+ * Utilise un émetteur direct intégré avec l'orchestrateur
  */
 @Module({})
-export class EventNotificationsModule {
+export class EventNotificationsSimpleModule {
     /**
-     * Configuration statique
+     * Configuration principale
      */
     static forRoot<T extends EventPayloads = EventPayloads>(
         config: PackageConfig<T>
     ): DynamicModule {
         return {
-            module: EventNotificationsModule,
+            module: EventNotificationsSimpleModule,
             providers: [
+                // Configuration tokens
                 {
                     provide: EVENT_NOTIFICATIONS_CONFIG,
                     useValue: config,
@@ -45,23 +43,14 @@ export class EventNotificationsModule {
                     provide: PROVIDERS_CONFIG,
                     useValue: config.providers || {},
                 },
-                {
-                    provide: NotificationOrchestratorService,
-                    useClass: NotificationOrchestratorService,
-                },
-                {
-                    provide: QueueManagerService,
-                    useClass: QueueManagerService,
-                },
-                {
-                    provide: EventEmitterService,
-                    useClass: EventEmitterService,
-                }
+                
+                // Services sans dépendances circulaires
+                NotificationOrchestratorService,    // Service de base
+                EventEmitterSimpleService,          // Émetteur simplifié
             ],
             exports: [
-                EventEmitterService,
+                EventEmitterSimpleService,
                 NotificationOrchestratorService,
-                QueueManagerService,
                 EVENT_NOTIFICATIONS_CONFIG,
                 EVENT_TYPES_CONFIG,
                 PROVIDERS_CONFIG
@@ -78,7 +67,7 @@ export class EventNotificationsModule {
         inject?: any[];
     }): DynamicModule {
         return {
-            module: EventNotificationsModule,
+            module: EventNotificationsSimpleModule,
             providers: [
                 {
                     provide: EVENT_NOTIFICATIONS_CONFIG,
@@ -101,61 +90,13 @@ export class EventNotificationsModule {
                     },
                     inject: options.inject || [],
                 },
-                {
-                    provide: NotificationOrchestratorService,
-                    useClass: NotificationOrchestratorService,
-                },
-                {
-                    provide: QueueManagerService,
-                    useClass: QueueManagerService,
-                },
-                {
-                    provide: EventEmitterService,
-                    useClass: EventEmitterService,
-                },
+                NotificationOrchestratorService,
+                EventEmitterSimpleService,
             ],
             exports: [
-                EventEmitterService,
+                EventEmitterSimpleService,
                 NotificationOrchestratorService,
-                QueueManagerService,
                 EVENT_NOTIFICATIONS_CONFIG,
-                EVENT_TYPES_CONFIG,
-                PROVIDERS_CONFIG
-            ],
-            global: true
-        };
-    }
-
-    /**
-     * Configuration pour workers (mode worker uniquement)
-     */
-    static forWorker<T extends EventPayloads = EventPayloads>(
-        config: {
-            eventTypes: PackageConfig<T>['eventTypes'];
-            providers: Record<string, NotificationProviderConfig>;
-            queue?: QueueConfig;
-        }
-    ): DynamicModule {
-        return {
-            module: EventNotificationsModule,
-            providers: [
-                {
-                    provide: EVENT_TYPES_CONFIG,
-                    useValue: config.eventTypes,
-                },
-                {
-                    provide: PROVIDERS_CONFIG,
-                    useValue: config.providers,
-                },
-
-                EventEmitterService,
-                NotificationOrchestratorService,
-                QueueManagerService
-            ],
-            exports: [
-                EventEmitterService,
-                NotificationOrchestratorService,
-                QueueManagerService,
                 EVENT_TYPES_CONFIG,
                 PROVIDERS_CONFIG
             ],

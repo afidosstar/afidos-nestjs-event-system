@@ -1,15 +1,19 @@
-import { DynamicModule, Module, forwardRef } from '@nestjs/common';
+import { DynamicModule, Module } from '@nestjs/common';
 import {
     EventPayloads,
-    PackageConfig,
-    NotificationProviderConfig,
-    QueueConfig
+    PackageConfig
 } from '../types/interfaces';
 
-// Services
-import { EventEmitterService } from '../services/event-emitter.service';
+// Services refactorisés
+import { EventBusService } from '../services/event-bus.service';
+import { EventEmitterService } from '../services/event-emitter-refactored.service';
 import { NotificationOrchestratorService } from '../services/notification-orchestrator.service';
-import { QueueManagerService } from '../services/queue-manager.service';
+import { NotificationProcessorService } from '../services/notification-processor.service';
+import { EventHandlerRegistryService } from '../services/event-handler-registry.service';
+import { HandlerInitializerService } from '../services/handler-initializer.service';
+
+// Handlers
+import { NotificationEventHandler } from '../handlers/notification-event.handler';
 
 /**
  * Configuration tokens pour l'injection de dépendances
@@ -19,20 +23,21 @@ export const EVENT_TYPES_CONFIG = 'EVENT_TYPES_CONFIG';
 export const PROVIDERS_CONFIG = 'PROVIDERS_CONFIG';
 
 /**
- * Module principal pour les notifications d'événements
- * Architecture simplifiée avec drivers pré-configurés
+ * Module EventNotifications refactorisé sans dépendances circulaires
+ * Utilise un EventBus pour découpler les communications
  */
 @Module({})
-export class EventNotificationsModule {
+export class EventNotificationsRefactoredModule {
     /**
-     * Configuration statique
+     * Configuration principale
      */
     static forRoot<T extends EventPayloads = EventPayloads>(
         config: PackageConfig<T>
     ): DynamicModule {
         return {
-            module: EventNotificationsModule,
+            module: EventNotificationsRefactoredModule,
             providers: [
+                // Configuration tokens
                 {
                     provide: EVENT_NOTIFICATIONS_CONFIG,
                     useValue: config,
@@ -45,23 +50,19 @@ export class EventNotificationsModule {
                     provide: PROVIDERS_CONFIG,
                     useValue: config.providers || {},
                 },
-                {
-                    provide: NotificationOrchestratorService,
-                    useClass: NotificationOrchestratorService,
-                },
-                {
-                    provide: QueueManagerService,
-                    useClass: QueueManagerService,
-                },
-                {
-                    provide: EventEmitterService,
-                    useClass: EventEmitterService,
-                }
+                
+                // Services découplés avec pattern Publisher/Subscriber/Handler
+                EventHandlerRegistryService,        // Registry des handlers (base service, no dependencies)
+                EventBusService,                    // Bus d'événements (Publisher/Subscriber)
+                NotificationOrchestratorService,    // Orchestrateur (needs config)
+                NotificationEventHandler,           // Handler pour les notifications (no dependencies now)
+                HandlerInitializerService,          // Initialise les handlers (needs registry & handler)
+                EventEmitterService,                // Emitter (Publisher)
             ],
             exports: [
                 EventEmitterService,
+                EventBusService,
                 NotificationOrchestratorService,
-                QueueManagerService,
                 EVENT_NOTIFICATIONS_CONFIG,
                 EVENT_TYPES_CONFIG,
                 PROVIDERS_CONFIG
@@ -78,7 +79,7 @@ export class EventNotificationsModule {
         inject?: any[];
     }): DynamicModule {
         return {
-            module: EventNotificationsModule,
+            module: EventNotificationsRefactoredModule,
             providers: [
                 {
                     provide: EVENT_NOTIFICATIONS_CONFIG,
@@ -101,61 +102,15 @@ export class EventNotificationsModule {
                     },
                     inject: options.inject || [],
                 },
-                {
-                    provide: NotificationOrchestratorService,
-                    useClass: NotificationOrchestratorService,
-                },
-                {
-                    provide: QueueManagerService,
-                    useClass: QueueManagerService,
-                },
-                {
-                    provide: EventEmitterService,
-                    useClass: EventEmitterService,
-                },
+                EventBusService,
+                NotificationOrchestratorService,
+                EventEmitterService,
             ],
             exports: [
                 EventEmitterService,
+                EventBusService,
                 NotificationOrchestratorService,
-                QueueManagerService,
                 EVENT_NOTIFICATIONS_CONFIG,
-                EVENT_TYPES_CONFIG,
-                PROVIDERS_CONFIG
-            ],
-            global: true
-        };
-    }
-
-    /**
-     * Configuration pour workers (mode worker uniquement)
-     */
-    static forWorker<T extends EventPayloads = EventPayloads>(
-        config: {
-            eventTypes: PackageConfig<T>['eventTypes'];
-            providers: Record<string, NotificationProviderConfig>;
-            queue?: QueueConfig;
-        }
-    ): DynamicModule {
-        return {
-            module: EventNotificationsModule,
-            providers: [
-                {
-                    provide: EVENT_TYPES_CONFIG,
-                    useValue: config.eventTypes,
-                },
-                {
-                    provide: PROVIDERS_CONFIG,
-                    useValue: config.providers,
-                },
-
-                EventEmitterService,
-                NotificationOrchestratorService,
-                QueueManagerService
-            ],
-            exports: [
-                EventEmitterService,
-                NotificationOrchestratorService,
-                QueueManagerService,
                 EVENT_TYPES_CONFIG,
                 PROVIDERS_CONFIG
             ],

@@ -18,8 +18,8 @@ export class EventEmitterService<T extends EventPayloads = EventPayloads> {
     private readonly logger = new Logger(EventEmitterService.name);
 
     constructor(
-        @Inject(forwardRef(() =>EVENT_TYPES_CONFIG)) private readonly eventConfig: EventTypesConfig<T>,
-        @Optional() @Inject(forwardRef(() => QueueManagerService)) private readonly queueManager?: QueueManagerService
+        @Inject(forwardRef(() => EVENT_TYPES_CONFIG)) private readonly eventConfig: EventTypesConfig<T>,
+        @Inject(forwardRef(() => QueueManagerService)) private readonly queueManager: QueueManagerService
     ) {}
 
     /**

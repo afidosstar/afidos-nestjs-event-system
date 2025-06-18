@@ -1,4 +1,4 @@
-import {Injectable, Logger} from '@nestjs/common';
+import {forwardRef, Inject, Injectable, Logger} from '@nestjs/common';
 import {InjectRepository} from '@nestjs/typeorm';
 import {Repository} from 'typeorm';
 import {EventEmitterService} from '@afidos/nestjs-event-notifications';
@@ -19,7 +19,7 @@ export class UserService {
     constructor(
         @InjectRepository(User)
         private userRepository: Repository<User>,
-        private eventEmitter: EventEmitterService<MyAppEvents>
+        @Inject(forwardRef(() =>EventEmitterService)) private eventEmitter: EventEmitterService<MyAppEvents>
     ) {
     }
 

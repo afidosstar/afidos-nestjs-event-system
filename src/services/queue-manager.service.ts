@@ -34,9 +34,9 @@ export class QueueManagerService {
     private readonly queueConfig?: QueueConfig;
 
     constructor(
-        @Inject(forwardRef(() =>EVENT_NOTIFICATIONS_CONFIG)) private readonly config: PackageConfig,
-        @Optional() @Inject(NotificationOrchestratorService) private readonly orchestrator?: NotificationOrchestratorService,
-        private readonly moduleRef?: ModuleRef
+        @Inject(forwardRef(() => EVENT_NOTIFICATIONS_CONFIG)) private readonly config: PackageConfig,
+        @Inject(forwardRef(() => NotificationOrchestratorService)) private readonly orchestrator: NotificationOrchestratorService,
+        private readonly moduleRef: ModuleRef
     ) {
         this.mode = this.config.mode || 'api';
         this.queueConfig = this.config.queue;

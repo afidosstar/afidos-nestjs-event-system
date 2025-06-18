@@ -29,7 +29,7 @@ import {StaticRecipientLoader} from "./loaders/static-recipient.loader";
       synchronize: process.env.NODE_ENV === 'development'
     }),
 
-    // Configuration du package EventNotifications
+    // Configuration du package EventNotifications 
     EventNotificationsModule.forRoot<MyAppEvents>(packageConfig),
     UserModule,
     OrderModule
@@ -37,7 +37,13 @@ import {StaticRecipientLoader} from "./loaders/static-recipient.loader";
   providers: [
     AppService,
     // Drivers préconçus
-    HttpDriver,
+    {
+      provide: HttpDriver,
+      useFactory: () => new HttpDriver({
+        timeout: 3600,
+        retries: 2,
+      })
+    },
     {
       provide: SmtpDriver,
       useFactory: () => new SmtpDriver({
@@ -50,10 +56,10 @@ import {StaticRecipientLoader} from "./loaders/static-recipient.loader";
         }
       })
     },
-    
+
     // Recipient loader
     StaticRecipientLoader,
-    
+
     // Providers de notifications (configurés dans config.ts et implémentés ici)
     {
       provide: EmailProvider,

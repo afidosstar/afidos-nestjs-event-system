@@ -3,9 +3,9 @@ import {
     createPackageConfig,
     createEventTypeConfig,
 } from '@afidos/nestjs-event-notifications'
-// Import des drivers pour déclencher les augmentations de module TypeScript
-import '@afidos/nestjs-event-notifications/drivers/smtp.driver'
-import '@afidos/nestjs-event-notifications/drivers/http.driver'
+// Import des drivers pour déclencher les augmentations de module TypeScript  
+import '@afidos/nestjs-event-notifications/dist/drivers/smtp.driver'
+import '@afidos/nestjs-event-notifications/dist/drivers/http.driver'
 import * as dotenv from 'dotenv'
 
 dotenv.config();
@@ -139,7 +139,7 @@ export const packageConfig = createPackageConfig<MyAppEvents>({
         }
     },
 
-    mode: 'hybrid',
+    mode: 'api',
 
     global: {
         defaultTimeout: 30000,

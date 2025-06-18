@@ -9,9 +9,27 @@ export { EventNotificationsModule } from './module/event-notifications.module';
 
 // Services
 export { EventEmitterService } from './services/event-emitter.service';
-export { EventRoutingService } from './services/event-routing.service';
-export { QueueService } from './services/queue.service';
-export { RetryService } from './services/retry.service';
+export { NotificationOrchestratorService } from './services/notification-orchestrator.service';
+export { QueueManagerService } from './services/queue-manager.service';
+
+// Drivers préconçus
+export { HttpDriver } from './drivers/http.driver';
+export { SmtpDriver } from './drivers/smtp.driver';
+
+// Loaders et interfaces étendues
+export { RecipientLoader, Recipient } from './loaders/recipient-loader.interface';
+
+// Base class pour providers
+export { NotificationProvider as NotificationProviderBase } from './providers/base/notification-provider.base';
+
+// Décorateur pour providers de notification
+export { 
+    InjectableNotifier,
+    NotifierRegistry,
+    discoverNotificationProviders,
+    getNotifierMetadata
+} from './decorators/injectable-notifier.decorator';
+export type { NotifierMetadata } from './decorators/injectable-notifier.decorator';
 
 // Types et interfaces publiques
 export {
@@ -44,22 +62,16 @@ export {
     SystemEvent
 } from './types/interfaces';
 
-// Providers
-export { SmtpEmailProvider, SmtpConfig, EmailPayload } from './providers/email/smtp-email.provider';
-export { HttpWebhookProvider, WebhookConfig, WebhookPayload } from './providers/webhook/http-webhook.provider';
-export { ExternalServiceProvider, ExternalServiceConfig, ExternalServicePayload } from './providers/external-service/firebase-like.provider';
-
-// Entités (pour les utilisateurs qui veulent les étendre)
+// Types pour drivers
 export {
-    EventTypeEntity,
-    EventLogEntity,
-    NotificationResultEntity,
-    ProviderHealthEntity,
-    EventStatsEntity
-} from './entities';
+    HttpRequest,
+    HttpResponse,
+    EmailMessage,
+    SmtpResponse,
+    SmtpDriverConfig
+} from './types/driver.types';
 
-// Commandes CLI
-export { SyncEventTypesCommand } from './commands/sync-event-types.command';
+// No default providers - providers are now in examples/basic-usage/src/providers
 
 // Tokens d'injection
 export {
@@ -67,6 +79,7 @@ export {
     EVENT_TYPES_CONFIG,
     PROVIDERS_CONFIG
 } from './module/event-notifications.module';
+
 
 // ================================
 // HELPERS ET UTILS
@@ -101,37 +114,8 @@ export function createPackageConfig<T extends EventPayloads>(
         throw new Error('At least one event type must be configured');
     }
 
-    if (!config.providers || Object.keys(config.providers).length === 0) {
-        throw new Error('At least one provider must be configured');
-    }
-
-    // Valider que tous les canaux utilisés ont des providers
-    const configuredChannels = new Set<string>();
-    const availableChannels = new Set<string>();
-
-    // Collecter les canaux utilisés dans les événements
-    Object.values<EventTypeConfig>(config.eventTypes).forEach(eventConfig => {
-        eventConfig.channels.forEach(channel => configuredChannels.add(channel));
-    });
-
-    // Collecter les canaux disponibles dans les providers
-    Object.entries<NotificationProviderConfig>(config.providers).forEach(([channelName, providerConfig]) => {
-        if (providerConfig.enabled !== false) {
-            availableChannels.add(channelName);
-        }
-    });
-
-    // Vérifier que tous les canaux utilisés ont des providers
-    const missingProviders = Array.from(configuredChannels).filter(
-        channel => !availableChannels.has(channel)
-    );
-
-    if (missingProviders.length > 0) {
-        throw new Error(
-            `Missing providers for channels: ${missingProviders.join(', ')}. ` +
-            `Configure providers for these channels or remove them from event configurations.`
-        );
-    }
+    // Providers are validated dynamically - no static validation needed
+    // Channels will be validated at runtime based on available providers
 
     return config;
 }

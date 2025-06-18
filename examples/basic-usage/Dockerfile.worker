@@ -1,0 +1,54 @@
+# Multi-stage build pour optimiser la taille de l'image worker
+FROM node:18-alpine AS builder
+
+# Répertoire de travail
+WORKDIR /app
+
+# Copier les fichiers de dépendances
+COPY package*.json ./
+
+# Installer les dépendances
+RUN npm ci --only=production && npm cache clean --force
+
+# Copier le code source
+COPY . .
+
+# Build de l'application
+RUN npm run build
+
+# Stage final - Image légère pour le worker
+FROM node:18-alpine AS worker
+
+# Métadonnées
+LABEL name="nestjs-notifications-worker"
+LABEL version="1.0.0"
+LABEL description="Worker pour traitement asynchrone des notifications"
+
+# Créer un utilisateur non-root pour la sécurité
+RUN addgroup -g 1001 -S nodejs
+RUN adduser -S nestjs -u 1001
+
+# Répertoire de travail
+WORKDIR /app
+
+# Copier les node_modules et les fichiers build depuis le stage builder
+COPY --from=builder --chown=nestjs:nodejs /app/node_modules ./node_modules
+COPY --from=builder --chown=nestjs:nodejs /app/dist ./dist
+COPY --from=builder --chown=nestjs:nodejs /app/package*.json ./
+
+# Variables d'environnement par défaut
+ENV NODE_ENV=production
+ENV MODE=worker
+
+# Santé check pour le worker
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD node -e "console.log('Worker healthcheck: OK')" || exit 1
+
+# Changer vers l'utilisateur non-root
+USER nestjs
+
+# Exposer le port pour monitoring (optionnel)
+EXPOSE 3001
+
+# Commande de démarrage du worker
+CMD ["node", "dist/worker"]

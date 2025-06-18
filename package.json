@@ -4,6 +4,9 @@
     "description": "Enterprise-grade event and notification system for NestJS applications",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
+    "workspaces": [
+        "examples/*"
+    ],
     "scripts": {
         "build": "npm run clean && tsc -p tsconfig.build.json",
         "build:watch": "tsc -p tsconfig.build.json --watch",
@@ -13,8 +16,7 @@
         "test": "jest",
         "cli:sync": "ts-node src/commands/sync-event-types.command.ts",
         "prebuild": "npm run clean",
-        "prepublishOnly": "npm run build && npm run test:ci",
-        "prepublishOnly2": "npm run build && npm run test:ci && npm run lint:check",
+        "prepublishOnly": "npm run build && npm run test:ci && npm run lint:check",
         "test:watch": "jest --watch",
         "test:cov": "jest --coverage",
         "test:e2e": "jest --config ./tests/jest-e2e.json",
@@ -32,7 +34,19 @@
         "release:dry": "semantic-release --dry-run",
         "worker": "node scripts/start-worker.js",
         "worker:dev": "nodemon --exec \"ts-node -r tsconfig-paths/register\" src/workers/worker-main.ts",
-        "worker:build": "tsc && node scripts/start-worker.js"
+        "worker:build": "tsc && node scripts/start-worker.js",
+        "example:install": "npm install",
+        "example:dev": "npm run build && npm run example:start:dev",
+        "example:start": "npm --prefix examples/basic-usage run start",
+        "example:start:dev": "npm --prefix examples/basic-usage run start:dev",
+        "example:test": "npm --prefix examples/basic-usage test",
+        "example:advanced:install": "npm --prefix examples/advanced-usage install",
+        "example:advanced:dev": "npm run build && npm run example:advanced:start:dev",
+        "example:advanced:start": "npm --prefix examples/advanced-usage run start",
+        "example:advanced:start:dev": "npm --prefix examples/advanced-usage run start:dev",
+        "example:advanced:api": "npm --prefix examples/advanced-usage run start:api",
+        "example:advanced:worker": "npm --prefix examples/advanced-usage run start:worker",
+        "example:advanced:monitoring": "npm --prefix examples/advanced-usage run start:monitoring"
     },
     "keywords": [
         "nestjs",

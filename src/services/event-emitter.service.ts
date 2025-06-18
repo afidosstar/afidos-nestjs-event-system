@@ -1,20 +1,21 @@
-import {Inject, Injectable, Logger} from '@nestjs/common';
-import { v4 as uuidv4 } from 'uuid';
+import { Injectable, Logger, Inject } from '@nestjs/common';
 import {
     EventPayloads,
     EventTypesConfig,
     EmitOptions,
-    EventEmissionResult,
     ProcessingMode,
+    EventEmissionResult,
     NotificationResult,
+    NotificationContext,
     QueuedEvent
 } from '../types/interfaces';
-import { EventRoutingService } from './event-routing.service';
-import { QueueService } from './queue.service';
 import {EVENT_TYPES_CONFIG} from "../module/event-notifications.module";
+import { NotificationOrchestratorService } from './notification-orchestrator.service';
+import { QueueManagerService } from './queue-manager.service';
 
 /**
  * Service principal pour l'émission d'événements avec type safety
+ * Version simplifiée sans routing ni queue complexe
  */
 @Injectable()
 export class EventEmitterService<T extends EventPayloads = EventPayloads> {
@@ -22,14 +23,13 @@ export class EventEmitterService<T extends EventPayloads = EventPayloads> {
 
     constructor(
         @Inject(EVENT_TYPES_CONFIG) private readonly eventConfig: EventTypesConfig<T>,
-        private readonly routingService: EventRoutingService,
-        private readonly queueService: QueueService
+        private readonly queueManager: QueueManagerService
     ) {}
 
     /**
-     * Émettre un événement avec type safety complète
+     * Émet un événement de manière asynchrone
      */
-    async emit<K extends keyof T>(
+    async emitAsync<K extends keyof T>(
         eventType: K,
         payload: T[K],
         options: EmitOptions = {}
@@ -38,363 +38,109 @@ export class EventEmitterService<T extends EventPayloads = EventPayloads> {
         const eventId = this.generateEventId();
         const correlationId = options.correlationId || this.generateCorrelationId();
 
-        this.logger.debug(`Emitting event: ${String(eventType)}`, {
+        this.logger.debug(`Emitting async event: ${eventType.toString()}`, {
             eventId,
             correlationId,
-            hasPayload: !!payload
+            payload
         });
 
-        try {
-            // 1. Valider la configuration de l'événement
-            this.validateEventType(eventType);
+        const context: NotificationContext = {
+            eventId,
+            correlationId,
+            attempt: 1,
+            eventType: eventType.toString(),
+            metadata: options.metadata || {}
+        };
 
-            // 2. Déterminer le mode de traitement
-            const mode = this.determineProcessingMode(eventType, options);
-
-            // 3. Créer le résultat de base
-            const result: EventEmissionResult = {
-                eventId,
-                correlationId,
-                mode,
-                waitedForResult: false,
-                metadata: {
-                    eventType: String(eventType),
-                    ...options.metadata
-                }
-            };
-
-            // 4. Traiter selon le mode
-            if (mode === 'sync') {
-                await this.processSynchronously(result, eventType, payload, options);
-            } else {
-                await this.processAsynchronously(result, eventType, payload, options);
-            }
-
-            // 5. Calculer la durée totale
-            result.processingDuration = Date.now() - startTime;
-
-            this.logger.debug(`Event emission completed: ${String(eventType)}`, {
-                eventId,
-                correlationId,
-                mode,
-                duration: result.processingDuration
-            });
-
-            return result;
-
-        } catch (error) {
-            this.logger.error(`Failed to emit event: ${String(eventType)}`, {
-                eventId,
-                correlationId,
-                error: error.message,
-                stack: error.stack
-            });
-
-            throw error;
-        }
+        // Délègue au QueueManager qui décidera du traitement (immédiat ou queue)
+        return await this.queueManager.processEvent(
+            eventType.toString(),
+            payload,
+            context,
+            options
+        );
     }
 
     /**
-     * Émettre un événement en mode synchrone
+     * Émet un événement de manière synchrone et attend le résultat
      */
     async emitSync<K extends keyof T>(
         eventType: K,
         payload: T[K],
-        options: Omit<EmitOptions, 'mode'> = {}
+        options: EmitOptions = {}
     ): Promise<EventEmissionResult> {
-        return this.emit(eventType, payload, { ...options, mode: 'sync' });
+        const startTime = Date.now();
+        const eventId = this.generateEventId();
+        const correlationId = options.correlationId || this.generateCorrelationId();
+
+        this.logger.debug(`Emitting sync event: ${eventType.toString()}`, {
+            eventId,
+            correlationId,
+            payload
+        });
+
+        const context: NotificationContext = {
+            eventId,
+            correlationId,
+            attempt: 1,
+            eventType: eventType.toString(),
+            metadata: options.metadata || {}
+        };
+
+        // Force le mode sync pour emitSync
+        return await this.queueManager.processEvent(
+            eventType.toString(),
+            payload,
+            context,
+            { ...options, mode: 'sync' }
+        );
     }
 
     /**
-     * Émettre un événement en mode asynchrone
-     */
-    async emitAsync<K extends keyof T>(
-        eventType: K,
-        payload: T[K],
-        options: Omit<EmitOptions, 'mode'> = {}
-    ): Promise<EventEmissionResult> {
-        return this.emit(eventType, payload, { ...options, mode: 'async' });
-    }
-
-    /**
-     * Émettre un événement et attendre le résultat
+     * Émet un événement et attend le résultat (alias pour emitSync)
      */
     async emitAndWait<K extends keyof T>(
         eventType: K,
         payload: T[K],
-        timeout: number = 30000,
-        options: Omit<EmitOptions, 'waitForResult' | 'timeout'> = {}
+        timeout?: number
     ): Promise<EventEmissionResult> {
-        return this.emit(eventType, payload, {
-            ...options,
-            waitForResult: true,
-            timeout
-        });
+        return this.emitSync(eventType, payload, { timeout });
     }
 
     /**
-     * Valider qu'un type d'événement est configuré
-     */
-    private validateEventType<K extends keyof T>(eventType: K): void {
-        const config = this.eventConfig[eventType];
-        if (!config) {
-            throw new Error(`Event type '${String(eventType)}' is not configured`);
-        }
-
-        if (!config.channels || config.channels.length === 0) {
-            throw new Error(`Event type '${String(eventType)}' has no channels configured`);
-        }
-    }
-
-    /**
-     * Déterminer le mode de traitement
-     */
-    private determineProcessingMode<K extends keyof T>(
-        eventType: K,
-        options: EmitOptions
-    ): ProcessingMode {
-        // 1. Mode explicitement spécifié
-        if (options.mode && options.mode !== 'auto') {
-            return options.mode;
-        }
-
-        // 2. Si on doit attendre le résultat, forcer sync
-        if (options.waitForResult) {
-            return 'sync';
-        }
-
-        // 3. Configuration du type d'événement
-        const config = this.eventConfig[eventType];
-        if (config.defaultProcessing) {
-            return config.defaultProcessing;
-        }
-
-        // 4. Par défaut : async
-        return 'async';
-    }
-
-    /**
-     * Traiter un événement en mode synchrone
-     */
-    private async processSynchronously<K extends keyof T>(
-        result: EventEmissionResult,
-        eventType: K,
-        payload: T[K],
-        options: EmitOptions
-    ): Promise<void> {
-        this.logger.debug(`Processing event synchronously: ${String(eventType)}`, {
-            eventId: result.eventId
-        });
-
-        try {
-            const results = await this.routingService.processEvent(
-                String(eventType),
-                payload,
-                {
-                    correlationId: result.correlationId,
-                    eventType: String(eventType),
-                    attempt: 1,
-                    metadata: options.metadata
-                }
-            );
-
-            result.results = results;
-            result.waitedForResult = true;
-            result.processedAt = new Date();
-
-        } catch (error) {
-            this.logger.error(`Synchronous processing failed: ${String(eventType)}`, {
-                eventId: result.eventId,
-                error: error.message
-            });
-
-            // En cas d'erreur, créer un résultat d'échec
-            result.results = [{
-                channel: 'unknown' as any,
-                provider: 'unknown',
-                status: 'failed',
-                error: error.message,
-                sentAt: new Date()
-            }];
-            result.processedAt = new Date();
-        }
-    }
-
-    /**
-     * Traiter un événement en mode asynchrone
-     */
-    private async processAsynchronously<K extends keyof T>(
-        result: EventEmissionResult,
-        eventType: K,
-        payload: T[K],
-        options: EmitOptions
-    ): Promise<void> {
-        this.logger.debug(`Processing event asynchronously: ${String(eventType)}`, {
-            eventId: result.eventId
-        });
-
-        const queuedEvent: QueuedEvent = {
-            eventId: result.eventId,
-            eventType: String(eventType),
-            payload,
-            correlationId: result.correlationId,
-            options,
-            attempt: 1,
-            createdAt: new Date()
-        };
-
-        // Ajouter à la queue
-        await this.queueService.addJob(queuedEvent, {
-            priority: this.getPriorityValue(options.priority),
-            delay: options.delay || this.eventConfig[eventType].delay || 0
-        });
-
-        result.queuedAt = new Date();
-
-        // Si on doit attendre le résultat
-        if (options.waitForResult) {
-            this.logger.debug(`Waiting for results: ${String(eventType)}`, {
-                eventId: result.eventId,
-                timeout: options.timeout
-            });
-
-            try {
-                const timeout = options.timeout ||
-                    this.eventConfig[eventType].timeout ||
-                    30000;
-
-                result.results = await this.waitForResults(result.eventId, timeout);
-                result.waitedForResult = true;
-                result.processedAt = new Date();
-
-            } catch (error) {
-                this.logger.warn(`Timeout waiting for results: ${String(eventType)}`, {
-                    eventId: result.eventId,
-                    error: error.message
-                });
-
-                result.results = [{
-                    channel: 'unknown' as any,
-                    provider: 'unknown',
-                    status: 'pending',
-                    error: 'Timeout waiting for results',
-                    sentAt: new Date()
-                }];
-                result.waitedForResult = true;
-                result.processedAt = new Date();
-            }
-        }
-    }
-
-    /**
-     * Attendre les résultats d'un événement traité en asynchrone
-     */
-    private async waitForResults(
-        eventId: string,
-        timeout: number
-    ): Promise<NotificationResult[]> {
-        return new Promise((resolve, reject) => {
-            const timeoutId = setTimeout(() => {
-                reject(new Error(`Timeout waiting for results of event ${eventId}`));
-            }, timeout);
-
-            // Polling des résultats
-            const pollInterval = setInterval(async () => {
-                try {
-                    const results = await this.queueService.getEventResults(eventId);
-                    if (results && results.length > 0) {
-                        clearTimeout(timeoutId);
-                        clearInterval(pollInterval);
-                        resolve(results);
-                    }
-                } catch (error) {
-                    this.logger.warn(`Error polling results for event ${eventId}`, {
-                        error: error.message
-                    });
-                }
-            }, 500); // Poll toutes les 500ms
-        });
-    }
-
-    /**
-     * Convertir la priorité en valeur numérique pour Bull
-     */
-    private getPriorityValue(priority?: string): number {
-        switch (priority) {
-            case 'high': return 10;
-            case 'normal': return 5;
-            case 'low': return 1;
-            default: return 5;
-        }
-    }
-
-    /**
-     * Générer un ID unique pour l'événement
+     * Génère un ID unique pour l'événement
      */
     private generateEventId(): string {
-        return `evt_${Date.now()}_${uuidv4().substring(0, 8)}`;
+        return `evt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     }
 
     /**
-     * Générer un ID de corrélation unique
+     * Génère un ID de corrélation unique
      */
     private generateCorrelationId(): string {
-        return `corr_${Date.now()}_${uuidv4().substring(0, 8)}`;
+        return `cor_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     }
 
     /**
-     * Obtenir les statistiques du service
+     * Valide la configuration d'un événement
      */
-    async getStats(): Promise<{
-        totalEvents: number;
-        syncEvents: number;
-        asyncEvents: number;
-        averageProcessingTime: number;
-    }> {
-        // Implementation pour récupérer les stats depuis la queue/cache
-        return {
-            totalEvents: 0,
-            syncEvents: 0,
-            asyncEvents: 0,
-            averageProcessingTime: 0
-        };
+    private validateEventType<K extends keyof T>(eventType: K): void {
+        if (!this.eventConfig[eventType]) {
+            throw new Error(`Event type "${eventType.toString()}" is not configured`);
+        }
     }
 
     /**
-     * Vérifier la santé du service
+     * Obtient la configuration d'un type d'événement
      */
-    async healthCheck(): Promise<{
-        status: 'healthy' | 'degraded' | 'unhealthy';
-        checks: Record<string, boolean>;
-    }> {
-        const checks: Record<string, boolean> = {};
+    getEventConfig<K extends keyof T>(eventType: K) {
+        return this.eventConfig[eventType];
+    }
 
-        try {
-            // Vérifier la queue
-            checks.queue = await this.queueService.healthCheck();
-        } catch {
-            checks.queue = false;
-        }
-
-        try {
-            // Vérifier le service de routing
-            checks.routing = await this.routingService.healthCheck();
-        } catch {
-            checks.routing = false;
-        }
-
-        const healthyChecks = Object.values(checks).filter(Boolean).length;
-        const totalChecks = Object.keys(checks).length;
-
-        let status: 'healthy' | 'degraded' | 'unhealthy';
-        if (healthyChecks === totalChecks) {
-            status = 'healthy';
-        } else if (healthyChecks > 0) {
-            status = 'degraded';
-        } else {
-            status = 'unhealthy';
-        }
-
-        return { status, checks };
+    /**
+     * Liste tous les types d'événements configurés
+     */
+    getAvailableEventTypes(): Array<keyof T> {
+        return Object.keys(this.eventConfig) as Array<keyof T>;
     }
 }

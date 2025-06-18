@@ -13,9 +13,10 @@ export interface EventPayloads {
 }
 
 /**
- * Canaux de notification supportés
+ * Type de base pour les canaux de notification
+ * Les canaux sont définis dynamiquement par les providers configurés
  */
-export type NotificationChannel = 'email' | 'sms' | 'webhook' | 'push' | 'external-service';
+export type NotificationChannel = string;
 
 /**
  * Modes de traitement des événements
@@ -25,7 +26,7 @@ export type ProcessingMode = 'sync' | 'async';
 /**
  * Priorités des événements
  */
-export type EventPriority = 'low' | 'normal' | 'high';
+export type EventPriority = 'low' | 'normal' | 'high' | 'critical';
 
 /**
  * Configuration d'un type d'événement
@@ -54,6 +55,12 @@ export interface EventTypeConfig {
 
     /** Timeout pour l'attente de résultat (en ms) */
     timeout?: number;
+
+    /** Validation des canaux (pour les canaux dynamiques) */
+    validateChannels?: boolean;
+
+    /** Canaux de fallback si les canaux principaux ne sont pas disponibles */
+    fallbackChannels?: NotificationChannel[];
 }
 
 /**
@@ -70,14 +77,36 @@ export type EventTypesConfig<T extends EventPayloads = EventPayloads> = {
 //     Record<keyof T, EventTypeConfig>;
 
 /**
- * Configuration d'un provider de notification
+ * Interface de base pour les configurations de drivers
+ * Les drivers peuvent étendre cette interface via module augmentation
  */
-export interface NotificationProviderConfig {
-    /** Driver du provider (smtp, twilio, http, etc.) */
-    driver: string;
+export interface DriverConfigurations {
+    // Les drivers spécifiques étendent cette interface
+    // Exemple d'usage dans le driver:
+    // declare module './interfaces' {
+    //   interface DriverConfigurations {
+    //     'smtp': SmtpDriverConfig;
+    //   }
+    // }
+}
+
+/**
+ * Type pour les drivers disponibles
+ * Utilise les clés de DriverConfigurations + string pour les drivers personnalisés
+ */
+export type AvailableDrivers = keyof DriverConfigurations | string;
+
+/**
+ * Configuration de base d'un provider de notification
+ */
+export interface NotificationProviderConfig<T extends AvailableDrivers = AvailableDrivers> {
+    /** Driver du provider (smtp, http, ou driver personnalisé) */
+    driver: T;
 
     /** Configuration spécifique au driver */
-    config: Record<string, any>;
+    config: T extends keyof DriverConfigurations
+        ? DriverConfigurations[T]
+        : Record<string, any>;
 
     /** Provider activé ou non */
     enabled?: boolean;
@@ -96,6 +125,10 @@ export interface QueueConfig {
         port: number;
         password?: string;
         db?: number;
+        maxRetriesPerRequest?: number;
+        retryDelayOnFailover?: number;
+        enableReadyCheck?: boolean;
+        family?: number;
     };
 
     /** Nombre de workers concurrents */
@@ -110,6 +143,10 @@ export interface QueueConfig {
         delay?: number;
         removeOnComplete?: number;
         removeOnFail?: number;
+        backoff?: {
+            type: string;
+            delay: number;
+        };
     };
 }
 
@@ -120,14 +157,15 @@ export interface PackageConfig<T extends EventPayloads = EventPayloads> {
     /** Configuration des types d'événements */
     eventTypes: EventTypesConfig<T>;
 
-    /** Configuration des providers */
-    providers: Record<string, NotificationProviderConfig>;
+    /** Configuration des providers (optionnel avec auto-découverte) */
+    providers?: Record<string, NotificationProviderConfig>;
+
 
     /** Configuration de la queue (optionnel) */
     queue?: QueueConfig;
 
     /** Mode de fonctionnement */
-    mode?: 'api' | 'worker' | 'hybrid';
+    mode?: 'worker' | 'hybrid';
 
     /** Préfixe pour les tables de base de données */
     tablePrefix?: string;
@@ -142,6 +180,18 @@ export interface PackageConfig<T extends EventPayloads = EventPayloads> {
 
         /** Activer les logs détaillés */
         enableDetailedLogs?: boolean;
+
+        /** Nombre maximum de notifications concurrentes */
+        maxConcurrentNotifications?: number;
+
+        /** Intervalle de health check (en ms) */
+        healthCheckInterval?: number;
+
+        /** Valider automatiquement les canaux dans les événements */
+        validateChannels?: boolean;
+
+        /** Utiliser les canaux de fallback en cas d'échec */
+        useFallbackChannels?: boolean;
     };
 }
 
@@ -155,6 +205,9 @@ export interface EmitOptions {
     /** Mode de traitement forcé */
     mode?: ProcessingMode | 'auto';
 
+    /** Alias pour mode (pour compatibilité) */
+    processing?: ProcessingMode;
+
     /** ID de corrélation personnalisé */
     correlationId?: string;
 
@@ -166,6 +219,9 @@ export interface EmitOptions {
 
     /** Délai avant traitement (en ms) */
     delay?: number;
+
+    /** Nombre de tentatives personnalisé */
+    retryAttempts?: number;
 
     /** Métadonnées additionnelles */
     metadata?: Record<string, any>;
@@ -182,7 +238,7 @@ export interface NotificationResult {
     provider: string;
 
     /** Statut de l'envoi */
-    status: 'sent' | 'failed' | 'pending' | 'retrying';
+    status: 'sent' | 'failed' | 'pending' | 'retrying' | 'skipped';
 
     /** Message d'erreur si échec */
     error?: string;
@@ -256,6 +312,9 @@ export interface NotificationProvider {
  * Contexte d'une notification
  */
 export interface NotificationContext {
+    /** ID de l'événement */
+    eventId: string;
+
     /** ID de corrélation */
     correlationId: string;
 

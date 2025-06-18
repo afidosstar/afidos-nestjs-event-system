@@ -1,0 +1,141 @@
+version: '3.8'
+
+services:
+  # API Principal - Mode API uniquement
+  api:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: nestjs-notifications-api
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - MODE=api
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=0
+      - SMTP_HOST=${SMTP_HOST:-smtp.gmail.com}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASS=${SMTP_PASS}
+      - SMTP_FROM=${SMTP_FROM}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - WEBHOOK_URL=${WEBHOOK_URL}
+    depends_on:
+      - redis
+    volumes:
+      - ./db.sqlite:/app/db.sqlite
+    networks:
+      - notifications-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Worker - Mode Worker uniquement  
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    container_name: nestjs-notifications-worker
+    environment:
+      - NODE_ENV=production
+      - MODE=worker
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=0
+      - SMTP_HOST=${SMTP_HOST:-smtp.gmail.com}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASS=${SMTP_PASS}
+      - SMTP_FROM=${SMTP_FROM}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - WEBHOOK_URL=${WEBHOOK_URL}
+    depends_on:
+      - redis
+    volumes:
+      - ./db.sqlite:/app/db.sqlite
+    networks:
+      - notifications-network
+    restart: unless-stopped
+    # Scaling: plusieurs workers possibles
+    deploy:
+      replicas: 2
+    healthcheck:
+      test: ["CMD", "node", "-e", "console.log('Worker OK')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # Worker supplémentaire (exemple de scaling)
+  worker-2:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    container_name: nestjs-notifications-worker-2
+    environment:
+      - NODE_ENV=production
+      - MODE=worker
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=0
+      - SMTP_HOST=${SMTP_HOST:-smtp.gmail.com}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASS=${SMTP_PASS}
+      - SMTP_FROM=${SMTP_FROM}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - WEBHOOK_URL=${WEBHOOK_URL}
+    depends_on:
+      - redis
+    volumes:
+      - ./db.sqlite:/app/db.sqlite
+    networks:
+      - notifications-network
+    restart: unless-stopped
+    profiles:
+      - scaling  # Démarrer avec: docker-compose --profile scaling up
+
+  # Redis pour la queue
+  redis:
+    image: redis:7-alpine
+    container_name: nestjs-notifications-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - notifications-network
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Redis Commander pour monitoring (optionnel)
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: nestjs-notifications-redis-ui
+    ports:
+      - "8081:8081"
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+    depends_on:
+      - redis
+    networks:
+      - notifications-network
+    profiles:
+      - monitoring  # Démarrer avec: docker-compose --profile monitoring up
+
+volumes:
+  redis-data:
+    driver: local
+
+networks:
+  notifications-network:
+    driver: bridge

@@ -11,7 +11,25 @@ export { EventNotificationsModule } from './module/event-notifications.module';
 export { EventEmitterService } from './services/event-emitter.service';
 export { NotificationOrchestratorService } from './services/notification-orchestrator.service';
 export { QueueManagerService } from './services/queue-manager.service';
+export { EventHandlerManagerService } from './services/event-handler-manager.service';
+export { HandlerQueueManagerService } from './services/handler-queue-manager.service';
 
+// Interfaces et types pour les handlers
+export { EventHandler } from './interfaces/event-handler.interface';
+export { 
+    HandlerQueueConfig, 
+    QueuedHandlerJob, 
+    EventHandlerContext 
+} from './types/handler-queue.types';
+
+// Décorateurs et utilitaires pour les handlers
+export { 
+    InjectableHandler, 
+    HandlerMetadata, 
+    HandlerRegistry,
+    discoverEventHandlers,
+    getHandlerMetadata 
+} from './decorators/injectable-handler.decorator';
 
 // Drivers préconçus
 export { HttpDriver } from './drivers/http.driver';

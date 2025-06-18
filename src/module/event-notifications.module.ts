@@ -10,6 +10,8 @@ import {
 import { EventEmitterService } from '../services/event-emitter.service';
 import { NotificationOrchestratorService } from '../services/notification-orchestrator.service';
 import { QueueManagerService } from '../services/queue-manager.service';
+import { HandlerQueueManagerService } from '../services/handler-queue-manager.service';
+import { EventHandlerManagerService } from '../services/event-handler-manager.service';
 
 /**
  * Configuration tokens pour l'injection de dépendances
@@ -54,6 +56,14 @@ export class EventNotificationsModule {
                     useClass: QueueManagerService,
                 },
                 {
+                    provide: HandlerQueueManagerService,
+                    useClass: HandlerQueueManagerService,
+                },
+                {
+                    provide: EventHandlerManagerService,
+                    useClass: EventHandlerManagerService,
+                },
+                {
                     provide: EventEmitterService,
                     useClass: EventEmitterService,
                 }
@@ -62,6 +72,8 @@ export class EventNotificationsModule {
                 EventEmitterService,
                 NotificationOrchestratorService,
                 QueueManagerService,
+                HandlerQueueManagerService,
+                EventHandlerManagerService,
                 EVENT_NOTIFICATIONS_CONFIG,
                 EVENT_TYPES_CONFIG,
                 PROVIDERS_CONFIG
@@ -110,6 +122,14 @@ export class EventNotificationsModule {
                     useClass: QueueManagerService,
                 },
                 {
+                    provide: HandlerQueueManagerService,
+                    useClass: HandlerQueueManagerService,
+                },
+                {
+                    provide: EventHandlerManagerService,
+                    useClass: EventHandlerManagerService,
+                },
+                {
                     provide: EventEmitterService,
                     useClass: EventEmitterService,
                 },
@@ -118,6 +138,8 @@ export class EventNotificationsModule {
                 EventEmitterService,
                 NotificationOrchestratorService,
                 QueueManagerService,
+                HandlerQueueManagerService,
+                EventHandlerManagerService,
                 EVENT_NOTIFICATIONS_CONFIG,
                 EVENT_TYPES_CONFIG,
                 PROVIDERS_CONFIG

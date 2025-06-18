@@ -17,6 +17,8 @@ import {EmailProvider} from "./providers/email.provider";
 import {TelegramProvider} from "./providers/telegram.provider";
 import {WebhookProvider} from "./providers/webhook.provider";
 import {StaticRecipientLoader} from "./loaders/static-recipient.loader";
+import {UserAnalyticsHandler} from "./handlers/user-analytics.handler";
+import {AuditLogHandler} from "./handlers/audit-log.handler";
 @Module({
   controllers: [HealthController],
   imports: [
@@ -59,6 +61,10 @@ import {StaticRecipientLoader} from "./loaders/static-recipient.loader";
 
     // Recipient loader
     StaticRecipientLoader,
+
+    // Event Handlers
+    UserAnalyticsHandler,
+    AuditLogHandler,
 
     // Providers de notifications (configurés dans config.ts et implémentés ici)
     {

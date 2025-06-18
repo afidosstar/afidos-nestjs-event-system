@@ -12,10 +12,11 @@ import { NotificationOrchestratorService } from './notification-orchestrator.ser
 import { EVENT_NOTIFICATIONS_CONFIG } from '../module/event-notifications.module';
 
 export interface QueueProvider {
-    add(jobName: string, data: QueuedEvent, options?: any): Promise<any>;
-    process(jobName: string, processor: (job: any) => Promise<any>): Promise<void>;
+    add(jobName: string, data: any, options?: any): Promise<any>;
+    process(jobName: string, processorOrConcurrency: number | ((job: any) => Promise<any>), processor?: (job: any) => Promise<any>): Promise<void>;
     isHealthy(): Promise<boolean>;
     close(): Promise<void>;
+    getStats?(): Promise<any>;
 }
 
 /**
@@ -306,12 +307,12 @@ export class QueueManagerService {
         // Ici on pourrait intégrer avec Bull/BullMQ
         // Pour l'exemple, on retourne un mock
         return {
-            async add(jobName: string, _data: QueuedEvent, _options?: any): Promise<any> {
+            async add(jobName: string, _data: any, _options?: any): Promise<any> {
                 this.logger.debug(`Mock: Job ${jobName} ajouté à la queue`);
                 return { id: `job-${Date.now()}` };
             },
 
-            async process(jobName: string, _processor: (job: any) => Promise<any>): Promise<void> {
+            async process(jobName: string, processorOrConcurrency: number | ((job: any) => Promise<any>), processor?: (job: any) => Promise<any>): Promise<void> {
                 this.logger.debug(`Mock: Processor enregistré pour ${jobName}`);
             },
 
@@ -334,6 +335,48 @@ export class QueueManagerService {
         return {
             queue: queueHealth,
             mode: this.mode
+        };
+    }
+
+    /**
+     * Crée une queue personnalisée pour un handler
+     */
+    async createQueue(queueName: string, options: any = {}): Promise<QueueProvider> {
+        // Utilise la même logique que la queue principale mais avec des options personnalisées
+        return {
+            async add(jobName: string, data: any, jobOptions?: any): Promise<any> {
+                this.logger.debug(`Queue ${queueName}: Job ${jobName} ajouté`);
+                return { id: `${queueName}-job-${Date.now()}` };
+            },
+
+            async process(jobName: string, processorOrConcurrency: number | ((job: any) => Promise<any>), processor?: (job: any) => Promise<any>): Promise<void> {
+                if (typeof processorOrConcurrency === 'function') {
+                    // process(jobName, processor)
+                    this.logger.debug(`Queue ${queueName}: Processor enregistré pour ${jobName}`);
+                } else {
+                    // process(jobName, concurrency, processor)
+                    const concurrency = processorOrConcurrency;
+                    this.logger.debug(`Queue ${queueName}: Processor enregistré pour ${jobName} avec concurrence ${concurrency}`);
+                }
+            },
+
+            async isHealthy(): Promise<boolean> {
+                return true;
+            },
+
+            async close(): Promise<void> {
+                this.logger.log(`Queue ${queueName} fermée`);
+            },
+
+            async getStats(): Promise<any> {
+                return {
+                    name: queueName,
+                    waiting: 0,
+                    active: 0,
+                    completed: 0,
+                    failed: 0
+                };
+            }
         };
     }
 

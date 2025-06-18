@@ -2,7 +2,7 @@
 // EXPORTS PRINCIPAUX DU PACKAGE
 // ================================
 
-import {EventPayloads, EventTypeConfig, EventTypesConfig, NotificationProviderConfig, PackageConfig } from './types/interfaces';
+import {EventPayloads, EventTypesConfig, NotificationProviderConfig, PackageConfig } from './types/interfaces';
 
 // Module principal
 export { EventNotificationsModule } from './module/event-notifications.module';
@@ -40,7 +40,6 @@ export {
     EventPriority,
 
     // Configuration
-    EventTypeConfig,
     EventTypesConfig,
     NotificationProviderConfig,
     QueueConfig,

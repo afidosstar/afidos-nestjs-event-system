@@ -6,8 +6,7 @@ import {
     EventEmissionResult,
     NotificationContext,
     EmitOptions,
-    PackageConfig,
-    ProcessingMode
+    PackageConfig
 } from '../types/interfaces';
 import { NotificationOrchestratorService } from './notification-orchestrator.service';
 import { EVENT_NOTIFICATIONS_CONFIG } from '../module/event-notifications.module';

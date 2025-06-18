@@ -3,14 +3,10 @@ import {
     EventPayloads,
     EventTypesConfig,
     EmitOptions,
-    ProcessingMode,
     EventEmissionResult,
-    NotificationResult,
-    NotificationContext,
-    QueuedEvent
+    NotificationContext
 } from '../types/interfaces';
 import {EVENT_TYPES_CONFIG} from "../module/event-notifications.module";
-import { NotificationOrchestratorService } from './notification-orchestrator.service';
 import { QueueManagerService } from './queue-manager.service';
 
 /**
@@ -34,7 +30,6 @@ export class EventEmitterService<T extends EventPayloads = EventPayloads> {
         payload: T[K],
         options: EmitOptions = {}
     ): Promise<EventEmissionResult> {
-        const startTime = Date.now();
         const eventId = this.generateEventId();
         const correlationId = options.correlationId || this.generateCorrelationId();
 
@@ -69,7 +64,6 @@ export class EventEmitterService<T extends EventPayloads = EventPayloads> {
         payload: T[K],
         options: EmitOptions = {}
     ): Promise<EventEmissionResult> {
-        const startTime = Date.now();
         const eventId = this.generateEventId();
         const correlationId = options.correlationId || this.generateCorrelationId();
 

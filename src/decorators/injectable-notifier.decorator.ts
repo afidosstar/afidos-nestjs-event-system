@@ -130,7 +130,7 @@ function validateNotificationProvider(target: any): void {
  */
 function checkIfExtendsBaseNotificationProvider(target: any): boolean {
     let currentClass = target;
-    
+
     // Parcourir la chaîne de prototypes pour chercher BaseNotificationProvider
     while (currentClass && currentClass.prototype) {
         // Vérifier le nom de la classe parent
@@ -138,24 +138,24 @@ function checkIfExtendsBaseNotificationProvider(target: any): boolean {
         if (parentClass && parentClass.name === 'BaseNotificationProvider') {
             return true;
         }
-        
+
         // Vérifier si la classe a des méthodes caractéristiques de BaseNotificationProvider
         const hasBaseProviderMethods = typeof currentClass.prototype?.filterRecipientsByProperty === 'function' &&
                                      typeof currentClass.prototype?.createSkippedResult === 'function' &&
                                      typeof currentClass.prototype?.getChannelName === 'function';
-        
+
         if (hasBaseProviderMethods) {
             return true;
         }
-        
+
         currentClass = parentClass;
-        
+
         // Éviter une boucle infinie
         if (currentClass === Object || currentClass === Function) {
             break;
         }
     }
-    
+
     return false;
 }
 
@@ -167,16 +167,16 @@ function checkIfImplementsNotificationProviderDirectly(target: any): boolean {
     if (checkIfExtendsBaseNotificationProvider(target)) {
         return false;
     }
-    
+
     // Vérifier que la classe a toutes les méthodes requises ET ne hérite pas de BaseNotificationProvider
     const hasAllMethods = typeof target.prototype?.send === 'function' &&
                          typeof target.prototype?.validateConfig === 'function' &&
                          typeof target.prototype?.healthCheck === 'function';
-    
+
     // Vérifier que ce n'est pas juste une classe avec des méthodes au hasard
     // Une vraie implémentation devrait avoir une structure cohérente
     const hasReasonableStructure = target.prototype?.constructor === target;
-    
+
     return hasAllMethods && hasReasonableStructure;
 }
 

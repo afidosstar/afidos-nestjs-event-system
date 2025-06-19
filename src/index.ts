@@ -6,6 +6,7 @@ import {EventPayloads, EventTypesConfig, NotificationProviderConfig, PackageConf
 
 // Module principal
 export { EventNotificationsModule } from './module/event-notifications.module';
+export { DriversModule } from './module/drivers.module';
 
 // Services
 export { EventEmitterService } from './services/event-emitter.service';

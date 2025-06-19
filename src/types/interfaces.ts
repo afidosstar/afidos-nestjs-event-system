@@ -2,6 +2,8 @@
 // TYPES DE BASE ET INTERFACES PUBLIQUES
 // ================================
 
+import {HttpDriverConfig, SmtpDriverConfig} from "@/types/driver.types";
+
 /**
  * Interface de base que l'utilisateur étend pour définir ses types d'événements
  */
@@ -160,6 +162,26 @@ export interface PackageConfig<T extends EventPayloads = EventPayloads> {
     /** Configuration des providers (optionnel avec auto-découverte) */
     providers?: Record<string, NotificationProviderConfig>;
 
+    drivers?:{
+        http?: {
+            timeout?: number;
+            retries?: number;
+            headers?: Record<string, string>;
+        };
+        smtp?: {
+            host: string;
+            port: number;
+            secure?: boolean;
+            auth?: {
+                user: string;
+                pass: string;
+            };
+            pool?: boolean;
+            maxConnections?: number;
+            maxMessages?: number;
+            timeout?: number;
+        };
+    }
 
     /** Configuration de la queue (optionnel) */
     queue?: QueueConfig;

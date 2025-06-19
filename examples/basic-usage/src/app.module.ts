@@ -5,9 +5,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import {User} from "./user/user.entity";
 import {Order} from "./order/order.entity";
 import {
-  EventNotificationsModule,
-  HttpDriver,
-  SmtpDriver
+  EventNotificationsModule
 } from '@afidos/nestjs-event-notifications';
 import {MyAppEvents, packageConfig} from "./config";
 import {UserModule} from "./user/user.module";
@@ -38,26 +36,6 @@ import {AuditLogHandler} from "./handlers/audit-log.handler";
   ],
   providers: [
     AppService,
-    // Drivers préconçus
-    {
-      provide: HttpDriver,
-      useFactory: () => new HttpDriver({
-        timeout: 3600,
-        retries: 2,
-      })
-    },
-    {
-      provide: SmtpDriver,
-      useFactory: () => new SmtpDriver({
-        host: process.env.SMTP_HOST || 'smtp.gmail.com',
-        port: parseInt(process.env.SMTP_PORT || '587'),
-        secure: process.env.SMTP_SECURE === 'true',
-        auth: {
-          user: process.env.SMTP_USER || 'your-email@gmail.com',
-          pass: process.env.SMTP_PASS || 'your-password'
-        }
-      })
-    },
 
     // Recipient loader
     StaticRecipientLoader,
@@ -66,27 +44,10 @@ import {AuditLogHandler} from "./handlers/audit-log.handler";
     UserAnalyticsHandler,
     AuditLogHandler,
 
-    // Providers de notifications (configurés dans config.ts et implémentés ici)
-    {
-      provide: EmailProvider,
-      useFactory: (recipientLoader: StaticRecipientLoader, smtpDriver: SmtpDriver) =>
-        new EmailProvider(recipientLoader, smtpDriver, process.env.SMTP_FROM || 'noreply@example.com'),
-      inject: [StaticRecipientLoader, SmtpDriver]
-    },
-    {
-      provide: TelegramProvider,
-      useFactory: (recipientLoader: StaticRecipientLoader, httpDriver: HttpDriver) =>
-        new TelegramProvider(recipientLoader, httpDriver, {
-          botToken: process.env.TELEGRAM_BOT_TOKEN || '123456:ABC-DEF'
-        }),
-      inject: [StaticRecipientLoader, HttpDriver]
-    },
-    {
-      provide: WebhookProvider,
-      useFactory: (recipientLoader: StaticRecipientLoader, httpDriver: HttpDriver) =>
-        new WebhookProvider(recipientLoader, httpDriver),
-      inject: [StaticRecipientLoader, HttpDriver]
-    }
+    // Providers de notifications - Les drivers sont maintenant automatiquement injectés via DriversModule
+    EmailProvider,
+    TelegramProvider,
+    WebhookProvider
   ]
 })
 export class AppModule {}

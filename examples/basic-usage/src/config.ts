@@ -122,6 +122,26 @@ export const eventTypesConfig = createEventTypeConfig<MyAppEvents>({
 export const packageConfig = createPackageConfig<MyAppEvents>({
     eventTypes: eventTypesConfig,
 
+    // Configuration des drivers - automatiquement injectés selon cette configuration
+    drivers: {
+        http: {
+            timeout: 30000,
+            retries: 2,
+            headers: {
+                'User-Agent': 'Basic-Usage-Example/1.0'
+            }
+        },
+        smtp: {
+            host: process.env.SMTP_HOST || 'smtp.gmail.com',
+            port: parseInt(process.env.SMTP_PORT || '587'),
+            secure: process.env.SMTP_SECURE === 'true',
+            auth: {
+                user: process.env.SMTP_USER || 'your-email@gmail.com',
+                pass: process.env.SMTP_PASS || 'your-password'
+            }
+        }
+    },
+
     queue: {
         redis: {
             host: process.env.REDIS_HOST || 'localhost',

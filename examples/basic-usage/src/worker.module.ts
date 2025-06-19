@@ -81,34 +81,9 @@ import { Order } from './order/order.entity';
         StaticRecipientLoader,
 
         // Providers de notifications (auto-découverte via @InjectableNotifier)
-        {
-            provide: EmailProvider,
-            useFactory: (loader: StaticRecipientLoader, smtp: SmtpDriver) => 
-                new EmailProvider(
-                    loader, 
-                    smtp, 
-                    process.env.SMTP_FROM || 'noreply@example.com'
-                ),
-            inject: [StaticRecipientLoader, SmtpDriver]
-        },
-        {
-            provide: TelegramProvider,
-            useFactory: (loader: StaticRecipientLoader, http: HttpDriver) => 
-                new TelegramProvider(loader, http, {
-                    botToken: process.env.TELEGRAM_BOT_TOKEN || '123456:ABC-DEF',
-                    parseMode: 'HTML'
-                }),
-            inject: [StaticRecipientLoader, HttpDriver]
-        },
-        {
-            provide: WebhookProvider,
-            useFactory: (loader: StaticRecipientLoader, http: HttpDriver) => 
-                new WebhookProvider(loader, http, {
-                    timeout: 10000,
-                    retryableStatusCodes: [202]
-                }),
-            inject: [StaticRecipientLoader, HttpDriver]
-        }
+        EmailProvider,
+        TelegramProvider,
+        WebhookProvider
     ]
 })
 export class WorkerModule {}

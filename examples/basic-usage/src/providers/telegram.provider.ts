@@ -8,6 +8,7 @@ import {
     NotificationContext,
     InjectableNotifier
 } from '@afidos/nestjs-event-notifications';
+import { StaticRecipientLoader } from '../loaders/static-recipient.loader';
 
 // Extension de l'interface Recipient pour ajouter le support Telegram
 declare module '@afidos/nestjs-event-notifications' {
@@ -36,13 +37,19 @@ export class TelegramProvider extends BaseNotificationProvider {
     private readonly apiUrl: string;
 
     constructor(
-        recipientLoader: RecipientLoader,
-        private readonly httpDriver: HttpDriver,
-        private readonly config: TelegramConfig
+        recipientLoader: StaticRecipientLoader,
+        private readonly httpDriver: HttpDriver
     ) {
         super(recipientLoader);
+        this.config = {
+            botToken: process.env.TELEGRAM_BOT_TOKEN || '123456:ABC-DEF',
+            parseMode: 'HTML',
+            timeout: 30000
+        };
         this.apiUrl = `https://api.telegram.org/bot${this.config.botToken}`;
     }
+
+    private readonly config: TelegramConfig;
 
     async send(payload: any, context: NotificationContext): Promise<NotificationResult> {
         try {

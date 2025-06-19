@@ -13,6 +13,9 @@ import { QueueManagerService } from '../services/queue-manager.service';
 import { HandlerQueueManagerService } from '../services/handler-queue-manager.service';
 import { EventHandlerManagerService } from '../services/event-handler-manager.service';
 
+// Modules
+import { DriversModule } from './drivers.module';
+
 /**
  * Configuration tokens pour l'injection de dépendances
  */
@@ -32,8 +35,17 @@ export class EventNotificationsModule {
     static forRoot<T extends EventPayloads = EventPayloads>(
         config: PackageConfig<T>
     ): DynamicModule {
+        // Valider la configuration des drivers
+        const driverValidation = DriversModule.validateDriversConfig(config);
+        if (!driverValidation.valid) {
+            throw new Error(`Invalid drivers configuration: ${driverValidation.errors.join(', ')}`);
+        }
+
         return {
             module: EventNotificationsModule,
+            imports: [
+                DriversModule.forRoot(config)
+            ],
             providers: [
                 {
                     provide: EVENT_NOTIFICATIONS_CONFIG,
@@ -66,7 +78,7 @@ export class EventNotificationsModule {
                 {
                     provide: EventEmitterService,
                     useClass: EventEmitterService,
-                }
+                },
             ],
             exports: [
                 EventEmitterService,
@@ -91,6 +103,12 @@ export class EventNotificationsModule {
     }): DynamicModule {
         return {
             module: EventNotificationsModule,
+            imports: [
+                DriversModule.forRootAsync({
+                    useFactory: options.useFactory,
+                    inject: options.inject || []
+                })
+            ],
             providers: [
                 {
                     provide: EVENT_NOTIFICATIONS_CONFIG,
@@ -152,32 +170,91 @@ export class EventNotificationsModule {
      * Configuration pour workers (mode worker uniquement)
      */
     static forWorker<T extends EventPayloads = EventPayloads>(
-        config: {
-            eventTypes: PackageConfig<T>['eventTypes'];
-            providers: Record<string, NotificationProviderConfig>;
-            queue?: QueueConfig;
-        }
+        config: PackageConfig<T>
     ): DynamicModule {
+        // Valider la configuration des drivers
+        const driverValidation = DriversModule.validateDriversConfig(config);
+        if (!driverValidation.valid) {
+            throw new Error(`Invalid drivers configuration: ${driverValidation.errors.join(', ')}`);
+        }
+
         return {
             module: EventNotificationsModule,
+            imports: [
+                DriversModule.forWorker(config)
+            ],
             providers: [
+                {
+                    provide: EVENT_NOTIFICATIONS_CONFIG,
+                    useValue: config,
+                },
                 {
                     provide: EVENT_TYPES_CONFIG,
                     useValue: config.eventTypes,
                 },
                 {
                     provide: PROVIDERS_CONFIG,
-                    useValue: config.providers,
+                    useValue: config.providers || {},
                 },
-
                 EventEmitterService,
                 NotificationOrchestratorService,
-                QueueManagerService
+                QueueManagerService,
+                HandlerQueueManagerService,
+                EventHandlerManagerService,
             ],
             exports: [
                 EventEmitterService,
                 NotificationOrchestratorService,
                 QueueManagerService,
+                HandlerQueueManagerService,
+                EventHandlerManagerService,
+                EVENT_NOTIFICATIONS_CONFIG,
+                EVENT_TYPES_CONFIG,
+                PROVIDERS_CONFIG
+            ],
+            global: true
+        };
+    }
+
+    /**
+     * Configuration pour mode API uniquement (pas de queues)
+     */
+    static forApi<T extends EventPayloads = EventPayloads>(
+        config: PackageConfig<T>
+    ): DynamicModule {
+        // Valider la configuration des drivers
+        const driverValidation = DriversModule.validateDriversConfig(config);
+        if (!driverValidation.valid) {
+            throw new Error(`Invalid drivers configuration: ${driverValidation.errors.join(', ')}`);
+        }
+
+        return {
+            module: EventNotificationsModule,
+            imports: [
+                DriversModule.forApi(config)
+            ],
+            providers: [
+                {
+                    provide: EVENT_NOTIFICATIONS_CONFIG,
+                    useValue: config,
+                },
+                {
+                    provide: EVENT_TYPES_CONFIG,
+                    useValue: config.eventTypes,
+                },
+                {
+                    provide: PROVIDERS_CONFIG,
+                    useValue: config.providers || {},
+                },
+                EventEmitterService,
+                NotificationOrchestratorService,
+                EventHandlerManagerService,
+            ],
+            exports: [
+                EventEmitterService,
+                NotificationOrchestratorService,
+                EventHandlerManagerService,
+                EVENT_NOTIFICATIONS_CONFIG,
                 EVENT_TYPES_CONFIG,
                 PROVIDERS_CONFIG
             ],

@@ -8,6 +8,7 @@ import {
     NotificationContext,
     InjectableNotifier
 } from '@afidos/nestjs-event-notifications';
+import { StaticRecipientLoader } from '../loaders/static-recipient.loader';
 
 // Extension de l'interface Recipient pour ajouter le support webhook
 declare module '@afidos/nestjs-event-notifications' {
@@ -35,12 +36,16 @@ export class WebhookProvider extends BaseNotificationProvider {
     private readonly logger = new Logger(WebhookProvider.name);
 
     constructor(
-        recipientLoader: RecipientLoader,
-        private readonly httpDriver: HttpDriver,
-        private readonly config: WebhookConfig = {}
+        recipientLoader: StaticRecipientLoader,
+        private readonly httpDriver: HttpDriver
     ) {
         super(recipientLoader);
     }
+
+    private readonly config: WebhookConfig = {
+        timeout: 30000,
+        retryableStatusCodes: [429, 500, 502, 503, 504]
+    };
 
     async send(payload: any, context: NotificationContext): Promise<NotificationResult> {
         try {

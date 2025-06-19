@@ -1,4 +1,4 @@
-import { Logger } from '@nestjs/common';
+import { Logger, Inject } from '@nestjs/common';
 import {
     BaseNotificationProvider,
     SmtpDriver,
@@ -10,6 +10,7 @@ import {
     NotificationContext,
     InjectableNotifier
 } from '@afidos/nestjs-event-notifications';
+import { StaticRecipientLoader } from '../loaders/static-recipient.loader';
 
 // Extension de l'interface Recipient pour ajouter le support email
 declare module '@afidos/nestjs-event-notifications' {
@@ -32,12 +33,13 @@ export class EmailProvider extends BaseNotificationProvider {
     private readonly logger = new Logger(EmailProvider.name);
 
     constructor(
-        recipientLoader: RecipientLoader,
-        private readonly smtpDriver: SmtpDriver,
-        private readonly fromEmail: string = 'noreply@example.com'
+        recipientLoader: StaticRecipientLoader,
+        private readonly smtpDriver: SmtpDriver
     ) {
         super(recipientLoader);
     }
+
+    private readonly fromEmail = process.env.SMTP_FROM || 'noreply@example.com';
 
     async send(payload: any, context: NotificationContext): Promise<NotificationResult> {
         try {

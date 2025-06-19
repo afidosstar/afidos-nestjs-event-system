@@ -1,6 +1,6 @@
-import { Logger } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { 
-    NotificationProviderBase, 
+    NotificationProvider, 
     HttpDriver, 
     RecipientLoader, 
     Recipient,
@@ -8,6 +8,7 @@ import {
     NotificationContext,
     InjectableNotifier
 } from '@afidos/nestjs-event-notifications';
+import { getNotifierMetadata } from '@afidos/nestjs-event-notifications';
 
 // Extension de l'interface Recipient pour ajouter le support webhook
 declare module '@afidos/nestjs-event-notifications' {
@@ -31,19 +32,57 @@ export interface WebhookConfig {
     driver: 'http',
     description: 'Provider pour notifications webhook via HTTP'
 })
-export class WebhookProvider extends NotificationProviderBase<'webhookUrl'> {
+@Injectable()
+export class WebhookProvider implements NotificationProvider {
+    readonly name = 'WebhookProvider';
+    readonly channel = 'webhook';
     protected readonly property = 'webhookUrl';
     private readonly logger = new Logger(WebhookProvider.name);
 
     constructor(
-        recipientLoader: RecipientLoader,
+        private readonly recipientLoader: RecipientLoader,
         private readonly httpDriver: HttpDriver,
         private readonly config: WebhookConfig = {}
-    ) {
-        super(recipientLoader);
+    ) {}
+
+    async send(payload: any, context: NotificationContext): Promise<NotificationResult> {
+        try {
+            // 1. Charger tous les destinataires pour cet événement
+            const allRecipients = await this.recipientLoader.load(context.eventType, payload);
+
+            // 2. Filtrer par la propriété webhookUrl
+            const webhookRecipients = this.filterRecipientsByProperty(allRecipients, 'webhookUrl');
+
+            if (webhookRecipients.length === 0) {
+                return {
+                    channel: this.getChannelName(),
+                    provider: this.getProviderName(),
+                    status: 'skipped',
+                    sentAt: new Date(),
+                    attempts: context.attempt,
+                    metadata: { reason: 'No webhook recipients found' }
+                };
+            }
+
+            // 3. Prendre le premier recipient
+            const recipient = webhookRecipients[0];
+            const address = recipient.webhookUrl as string;
+            
+            return await this.sendToAddress(address, context.eventType, payload, recipient, context);
+
+        } catch (error) {
+            return {
+                channel: this.getChannelName(),
+                provider: this.getProviderName(),
+                status: 'failed',
+                error: `Failed to send: ${error.message}`,
+                sentAt: new Date(),
+                attempts: context.attempt
+            };
+        }
     }
 
-    protected async sendToAddress(
+    private async sendToAddress(
         address: string,
         eventType: string,
         payload: any,
@@ -53,14 +92,44 @@ export class WebhookProvider extends NotificationProviderBase<'webhookUrl'> {
         const startTime = Date.now();
 
         try {
-            const webhookPayload = this.buildWebhookPayload(eventType, payload, recipient, context);
-            const headers = this.buildHeaders(recipient);
+            // Préparer les headers
+            const headers = {
+                'Content-Type': 'application/json',
+                'User-Agent': 'nestjs-event-notifications/1.0.3',
+                'X-Event-Type': eventType,
+                'X-Event-ID': context.eventId,
+                'X-Correlation-ID': context.correlationId,
+                'X-Recipient-ID': recipient.id || 'unknown',
+                ...this.config.defaultHeaders,
+                ...recipient.webhookHeaders
+            };
 
-            const response = await this.httpDriver.post(address, webhookPayload, headers);
+            // Préparer le body de la webhook
+            const webhookPayload = {
+                event: {
+                    type: eventType,
+                    id: context.eventId,
+                    correlationId: context.correlationId,
+                    timestamp: new Date().toISOString(),
+                    attempt: context.attempt
+                },
+                data: payload,
+                recipient: {
+                    id: recipient.id,
+                    preferences: recipient.preferences
+                }
+            };
+
+            const response = await this.httpDriver.post(address, webhookPayload, {
+                headers,
+                timeout: this.config.timeout || 30000
+            });
+
             const duration = Date.now() - startTime;
+            const isSuccess = response.status >= 200 && response.status < 300;
 
-            if (this.isSuccessfulResponse(response.status)) {
-                this.logger.log(`Webhook sent successfully to ${address} for event ${eventType}`);
+            if (isSuccess) {
+                this.logger.log(`Webhook sent successfully to ${address} for event ${eventType} (${response.status})`);
 
                 return {
                     channel: this.getChannelName(),
@@ -69,21 +138,25 @@ export class WebhookProvider extends NotificationProviderBase<'webhookUrl'> {
                     sentAt: new Date(),
                     attempts: context.attempt,
                     metadata: {
-                        recipientId: recipient.id,
                         webhookUrl: address,
-                        duration,
                         httpStatus: response.status,
-                        response: response.data
+                        responseHeaders: response.headers,
+                        responseSize: JSON.stringify(response.data).length,
+                        duration,
+                        recipientId: recipient.id
                     }
                 };
             } else {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                throw new Error(`Webhook returned non-success status: ${response.status}`);
             }
 
         } catch (error) {
             const duration = Date.now() - startTime;
-            
+
             this.logger.error(`Failed to send webhook to ${address} for event ${eventType}: ${error.message}`);
+
+            // Déterminer si l'erreur est "retryable"
+            const isRetryable = this.isRetryableError(error);
 
             return {
                 channel: this.getChannelName(),
@@ -93,73 +166,60 @@ export class WebhookProvider extends NotificationProviderBase<'webhookUrl'> {
                 sentAt: new Date(),
                 attempts: context.attempt,
                 metadata: {
-                    recipientId: recipient.id,
                     webhookUrl: address,
-                    duration
+                    httpStatus: error.response?.status,
+                    isRetryable,
+                    duration,
+                    recipientId: recipient.id,
+                    errorCode: error.code
                 }
             };
         }
     }
 
     /**
-     * Construit le payload du webhook
+     * Filtre les recipients qui ont une adresse pour une propriété donnée
      */
-    private buildWebhookPayload(
-        eventType: string, 
-        payload: any, 
-        recipient: Recipient, 
-        context: NotificationContext
-    ): any {
-        return {
-            event: {
-                type: eventType,
-                timestamp: new Date().toISOString(),
-                id: context.correlationId,
-                attempt: context.attempt
-            },
-            recipient: {
-                id: recipient.id,
-                channel: this.getChannelName()
-            },
-            data: payload,
-            metadata: {
-                provider: this.getProviderName(),
-                version: '1.0.0'
-            }
-        };
+    private filterRecipientsByProperty<K extends keyof Recipient>(
+        recipients: Recipient[],
+        property: K
+    ): Recipient[] {
+        return recipients.filter(recipient => {
+            const address = recipient[property];
+            return address !== undefined && address !== null && address !== '';
+        });
     }
 
     /**
-     * Construit les headers HTTP pour le webhook
+     * Retourne le nom du provider pour les logs et métadonnées
      */
-    private buildHeaders(recipient: Recipient): Record<string, string> {
-        const headers: Record<string, string> = {
-            'Content-Type': 'application/json',
-            'User-Agent': 'nestjs-event-notifications/1.0.0',
-            'X-Event-Source': 'nestjs-event-notifications',
-            ...this.config.defaultHeaders
-        };
-
-        // Ajouter les headers spécifiques au destinataire
-        if (recipient.webhookHeaders) {
-            Object.assign(headers, recipient.webhookHeaders);
-        }
-
-        return headers;
+    private getProviderName(): string {
+        return this.constructor.name;
     }
 
     /**
-     * Détermine si la réponse HTTP est considérée comme un succès
+     * Récupère le nom du canal depuis les métadonnées du décorateur @InjectableNotifier
      */
-    private isSuccessfulResponse(status: number): boolean {
-        // 2xx = succès
-        if (status >= 200 && status < 300) {
+    private getChannelName(): string {
+        const metadata = getNotifierMetadata(this.constructor);
+        return metadata?.channel || 'unknown';
+    }
+
+    /**
+     * Détermine si une erreur est "retryable" (utile pour les systèmes de retry)
+     */
+    private isRetryableError(error: any): boolean {
+        // Erreurs réseau (timeout, connexion, etc.)
+        if (error.code === 'ECONNRESET' || error.code === 'ENOTFOUND' || error.code === 'ECONNREFUSED') {
             return true;
         }
 
-        // Codes spécifiques configurés comme réussis (ex: 202 Accepted)
-        if (this.config.retryableStatusCodes?.includes(status)) {
-            return true;
+        // Status codes HTTP retryables (5xx server errors)
+        if (error.response?.status) {
+            const status = error.response.status;
+            const defaultRetryableCodes = [429, 500, 502, 503, 504];
+            const retryableCodes = this.config.retryableStatusCodes || defaultRetryableCodes;
+            return retryableCodes.includes(status);
         }
 
         return false;
@@ -167,16 +227,11 @@ export class WebhookProvider extends NotificationProviderBase<'webhookUrl'> {
 
     /**
      * Vérifie la santé du provider webhook
-     * Teste les webhooks configurés s'ils ont un endpoint de health check
      */
     async healthCheck(): Promise<boolean> {
-        try {
-            // Pour un webhook, on peut seulement vérifier que le HttpDriver fonctionne
-            return await this.httpDriver.healthCheck();
-        } catch (error) {
-            this.logger.error(`Webhook provider health check failed: ${error.message}`);
-            return false;
-        }
+        // Pour webhook, on considère que c'est toujours "healthy" 
+        // car on ne peut pas tester une URL générique
+        return true;
     }
 
     /**
@@ -185,16 +240,25 @@ export class WebhookProvider extends NotificationProviderBase<'webhookUrl'> {
     validateConfig(config: WebhookConfig): boolean | string[] {
         const errors: string[] = [];
 
-        if (config.timeout && (config.timeout < 1000 || config.timeout > 60000)) {
-            errors.push('timeout must be between 1000 and 60000 milliseconds');
+        if (config.timeout && (config.timeout < 1000 || config.timeout > 120000)) {
+            errors.push('timeout must be between 1000 and 120000 milliseconds');
         }
 
         if (config.retryableStatusCodes) {
-            const invalidCodes = config.retryableStatusCodes.filter(code => 
-                !Number.isInteger(code) || code < 100 || code > 599
+            const validStatusCodes = config.retryableStatusCodes.every(code => 
+                Number.isInteger(code) && code >= 100 && code < 600
             );
-            if (invalidCodes.length > 0) {
-                errors.push(`Invalid HTTP status codes: ${invalidCodes.join(', ')}`);
+            if (!validStatusCodes) {
+                errors.push('retryableStatusCodes must contain valid HTTP status codes (100-599)');
+            }
+        }
+
+        if (config.defaultHeaders) {
+            const hasInvalidHeaders = Object.keys(config.defaultHeaders).some(key => 
+                !key || typeof key !== 'string'
+            );
+            if (hasInvalidHeaders) {
+                errors.push('defaultHeaders must have valid string keys');
             }
         }
 
@@ -202,31 +266,30 @@ export class WebhookProvider extends NotificationProviderBase<'webhookUrl'> {
     }
 
     /**
-     * Méthodes utilitaires pour créer des configurations webhook
+     * Méthodes utilitaires pour webhook
      */
-    static createBasicConfig(headers?: Record<string, string>): WebhookConfig {
+    static createWebhookPayload(eventType: string, data: any, metadata: any = {}) {
         return {
-            defaultHeaders: headers,
-            timeout: 10000,
-            retryableStatusCodes: [202] // Accepted
+            event: {
+                type: eventType,
+                timestamp: new Date().toISOString(),
+                ...metadata
+            },
+            data
         };
     }
 
-    static createSlackConfig(): WebhookConfig {
-        return {
-            defaultHeaders: {
-                'Content-Type': 'application/json'
-            },
-            timeout: 5000
+    static createSecureHeaders(secret?: string) {
+        const headers: Record<string, string> = {
+            'Content-Type': 'application/json',
+            'User-Agent': 'nestjs-event-notifications/1.0.3'
         };
-    }
 
-    static createDiscordConfig(): WebhookConfig {
-        return {
-            defaultHeaders: {
-                'Content-Type': 'application/json'
-            },
-            timeout: 10000
-        };
+        if (secret) {
+            // Simple exemple de signature (en production, utiliser HMAC-SHA256)
+            headers['X-Webhook-Signature'] = Buffer.from(secret).toString('base64');
+        }
+
+        return headers;
     }
 }

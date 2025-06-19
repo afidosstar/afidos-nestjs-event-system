@@ -1,6 +1,6 @@
-import { Logger } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import {
-    NotificationProviderBase,
+    NotificationProvider,
     HttpDriver,
     RecipientLoader,
     Recipient,
@@ -8,6 +8,7 @@ import {
     NotificationContext,
     InjectableNotifier
 } from '@afidos/nestjs-event-notifications';
+import { getNotifierMetadata } from '@afidos/nestjs-event-notifications';
 
 // Extension de l'interface Recipient pour ajouter le support Telegram
 declare module '@afidos/nestjs-event-notifications' {
@@ -31,21 +32,60 @@ export interface TelegramConfig {
     driver: 'http',
     description: 'Provider pour notifications Telegram via HTTP API'
 })
-export class TelegramProvider extends NotificationProviderBase<'telegramId'> {
+@Injectable()
+export class TelegramProvider implements NotificationProvider {
+    readonly name = 'TelegramProvider';
+    readonly channel = 'telegram';
     protected readonly property = 'telegramId';
     private readonly logger = new Logger(TelegramProvider.name);
     private readonly apiUrl: string;
 
     constructor(
-        recipientLoader: RecipientLoader,
+        private readonly recipientLoader: RecipientLoader,
         private readonly httpDriver: HttpDriver,
         private readonly config: TelegramConfig
     ) {
-        super(recipientLoader);
         this.apiUrl = `https://api.telegram.org/bot${this.config.botToken}`;
     }
 
-    protected async sendToAddress(
+    async send(payload: any, context: NotificationContext): Promise<NotificationResult> {
+        try {
+            // 1. Charger tous les destinataires pour cet événement
+            const allRecipients = await this.recipientLoader.load(context.eventType, payload);
+
+            // 2. Filtrer par la propriété telegramId
+            const telegramRecipients = this.filterRecipientsByProperty(allRecipients, 'telegramId');
+
+            if (telegramRecipients.length === 0) {
+                return {
+                    channel: this.getChannelName(),
+                    provider: this.getProviderName(),
+                    status: 'skipped',
+                    sentAt: new Date(),
+                    attempts: context.attempt,
+                    metadata: { reason: 'No telegram recipients found' }
+                };
+            }
+
+            // 3. Prendre le premier recipient
+            const recipient = telegramRecipients[0];
+            const address = recipient.telegramId as string;
+            
+            return await this.sendToAddress(address, context.eventType, payload, recipient, context);
+
+        } catch (error) {
+            return {
+                channel: this.getChannelName(),
+                provider: this.getProviderName(),
+                status: 'failed',
+                error: `Failed to send: ${error.message}`,
+                sentAt: new Date(),
+                attempts: context.attempt
+            };
+        }
+    }
+
+    private async sendToAddress(
         address: string,
         eventType: string,
         payload: any,
@@ -106,6 +146,34 @@ export class TelegramProvider extends NotificationProviderBase<'telegramId'> {
                 }
             };
         }
+    }
+
+    /**
+     * Filtre les recipients qui ont une adresse pour une propriété donnée
+     */
+    private filterRecipientsByProperty<K extends keyof Recipient>(
+        recipients: Recipient[],
+        property: K
+    ): Recipient[] {
+        return recipients.filter(recipient => {
+            const address = recipient[property];
+            return address !== undefined && address !== null && address !== '';
+        });
+    }
+
+    /**
+     * Retourne le nom du provider pour les logs et métadonnées
+     */
+    private getProviderName(): string {
+        return this.constructor.name;
+    }
+
+    /**
+     * Récupère le nom du canal depuis les métadonnées du décorateur @InjectableNotifier
+     */
+    private getChannelName(): string {
+        const metadata = getNotifierMetadata(this.constructor);
+        return metadata?.channel || 'unknown';
     }
 
     /**

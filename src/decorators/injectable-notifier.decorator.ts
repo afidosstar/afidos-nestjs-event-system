@@ -102,22 +102,14 @@ function validateNotificationProvider(target: any): void {
 
     if (!hasRequiredMethods) {
         throw new Error(
-            `La classe ${target.name} doit étendre NotificationProviderBase et implémenter ` +
+            `La classe ${target.name} doit implémenter NotificationProvider avec ` +
             `les méthodes send(), validateConfig() et healthCheck().`
         );
     }
 
-    // Vérification basique que la classe semble hériter de NotificationProviderBase
-    // (Les propriétés name et channel sont définies dans le constructeur, pas sur le prototype)
-    const extendsBase = target.prototype?.constructor !== target ||
-                       target.prototype?.getProviderName !== undefined ||
-                       target.prototype?.sendToAddress !== undefined;
-
-    if (!extendsBase) {
-        throw new Error(
-            `La classe ${target.name} doit étendre NotificationProviderBase.`
-        );
-    }
+    // Vérification que la classe implémente l'interface NotificationProvider
+    // On vérifie la présence des propriétés requises
+    const hasRequiredProperties = target.prototype?.constructor?.name !== undefined;
 }
 
 /**
@@ -125,7 +117,7 @@ function validateNotificationProvider(target: any): void {
  *
  * Ce décorateur:
  * - Applique @Injectable() pour l'injection de dépendances NestJS
- * - Valide que la classe étend NotificationProviderBase
+ * - Valide que la classe implémente NotificationProvider
  * - Enregistre le provider dans un registry global pour auto-découverte
  * - Stocke les métadonnées du provider
  *

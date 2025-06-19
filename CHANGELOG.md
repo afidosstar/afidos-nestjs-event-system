@@ -117,7 +117,7 @@ EventEmitterService
 ### 🔄 Compatibilité
 
 #### Rétrocompatibilité
-- **NotificationProviderBase conservé** - toujours nécessaire pour les providers
+- **NotificationProvider conservé** - toujours nécessaire pour les providers
 - **API EventEmitterService inchangée** - `emitAsync()` / `emitSync()`
 - **Configuration existante** continue de fonctionner
 - **Aucun breaking change** pour les utilisateurs existants
@@ -155,7 +155,7 @@ Les handlers sont **additionnels** au système de notifications :
 #### Auto-découverte des Providers avec `@InjectableNotifier`
 - **Nouveau décorateur `@InjectableNotifier`** pour l'enregistrement automatique des providers
 - **Système `NotifierRegistry`** pour la découverte et gestion centralisée
-- **Validation automatique** que les providers étendent `NotificationProviderBase`
+- **Validation automatique** que les providers étendent `NotificationProvider`
 - **Configuration simplifiée** : plus besoin de section `providers` manuelle
 
 ```typescript
@@ -164,7 +164,7 @@ Les handlers sont **additionnels** au système de notifications :
     driver: 'smtp',
     description: 'Provider email SMTP'
 })
-export class EmailProvider extends NotificationProviderBase<'email'> {
+export class EmailProvider extends NotificationProvider<'email'> {
     // Auto-découverte et enregistrement automatique !
 }
 ```
@@ -288,7 +288,7 @@ interface NotificationProviderConfig<T extends AvailableDrivers> {
 ```typescript
 // Avant
 @Injectable()
-export class EmailProvider extends NotificationProviderBase<'email'> {
+export class EmailProvider extends NotificationProvider<'email'> {
     readonly channel = 'email';
 }
 
@@ -298,7 +298,7 @@ export class EmailProvider extends NotificationProviderBase<'email'> {
     driver: 'smtp',
     description: 'Provider email'
 })
-export class EmailProvider extends NotificationProviderBase<'email'> {
+export class EmailProvider extends NotificationProvider<'email'> {
     protected readonly property = 'email'; // Optionnel
 }
 ```

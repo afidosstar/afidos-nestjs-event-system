@@ -44,7 +44,7 @@ graph TB
     subgraph PROC["⚙️ PROCESSING LAYER"]
         subgraph NOTIF["📧 NOTIFICATION SYSTEM"]
             NOS[NotificationOrchestrator<br/>Service]
-            NPB[NotificationProviderBase]
+            NPB[NotificationProvider]
             
             subgraph PROVIDERS["Notification Providers"]
                 EP[📧 EmailProvider<br/>@InjectableNotifier]
@@ -469,7 +469,7 @@ export class AppModule {}
 // providers/email.provider.ts
 import { Logger } from '@nestjs/common';
 import {
-    NotificationProviderBase,
+    NotificationProvider,
     SmtpDriver,
     RecipientLoader,
     Recipient,
@@ -493,7 +493,7 @@ declare module '@afidos/nestjs-event-notifications' {
     driver: 'smtp',          // ← Driver utilisé
     description: 'Provider pour notifications email via SMTP'
 })
-export class EmailProvider extends NotificationProviderBase<'email'> {
+export class EmailProvider implements NotificationProvider {
     protected readonly property = 'email';  // ← Propriété Recipient (optionnel)
 
     constructor(
@@ -501,7 +501,7 @@ export class EmailProvider extends NotificationProviderBase<'email'> {
         private readonly smtpDriver: SmtpDriver,
         private readonly fromEmail: string = 'noreply@example.com'
     ) {
-        super(recipientLoader);
+        // Implémentation de l'interface NotificationProvider
     }
 
     protected async sendToAddress(
@@ -729,7 +729,7 @@ interface HandlerQueueConfig {
     driver: 'http',
     description: 'Provider Telegram'
 })
-export class TelegramProvider extends NotificationProviderBase<'telegramId'> {
+export class TelegramProvider extends NotificationProvider<'telegramId'> {
     protected readonly property = 'telegramId';  // Optionnel
     
     // Le provider s'enregistre automatiquement !
@@ -810,7 +810,7 @@ Si vous migrez depuis une version antérieure :
 ```typescript
 // Avant
 @Injectable()
-export class EmailProvider extends NotificationProviderBase<'email'> {
+export class EmailProvider implements NotificationProvider {
     readonly channel = 'email';
 }
 
@@ -820,7 +820,7 @@ export class EmailProvider extends NotificationProviderBase<'email'> {
     driver: 'smtp',
     description: 'Provider email'
 })
-export class EmailProvider extends NotificationProviderBase<'email'> {
+export class EmailProvider implements NotificationProvider {
     protected readonly property = 'email';  // Optionnel
 }
 ```

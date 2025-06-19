@@ -126,7 +126,7 @@ class EventEmitterService<T extends EventPayloads> {
   driver: 'smtp',
   description: 'Email notifications'
 })
-class EmailProvider extends NotificationProviderBase<'email'> {
+class EmailProvider extends NotificationProvider<'email'> {
   protected async sendToAddress(
     address: string,
     eventType: string,
@@ -137,7 +137,7 @@ class EmailProvider extends NotificationProviderBase<'email'> {
 
 **Composants clés** :
 - **NotificationOrchestratorService** : Coordination des notifications
-- **NotificationProviderBase** : Classe de base pour les providers
+- **NotificationProvider** : Classe de base pour les providers
 - **RecipientLoader** : Résolution des destinataires
 - **Driver Pattern** : Abstraction des transports (SMTP, HTTP)
 

@@ -1,15 +1,16 @@
-import { Logger } from '@nestjs/common';
-import { 
-    NotificationProviderBase, 
-    SmtpDriver, 
-    SmtpDriverConfig, 
+import { Injectable, Logger } from '@nestjs/common';
+import {
+    NotificationProvider,
+    SmtpDriver,
+    SmtpDriverConfig,
     EmailMessage,
-    RecipientLoader, 
+    RecipientLoader,
     Recipient,
-    NotificationResult, 
+    NotificationResult,
     NotificationContext,
     InjectableNotifier
 } from '@afidos/nestjs-event-notifications';
+import { getNotifierMetadata } from '@afidos/nestjs-event-notifications';
 
 // Extension de l'interface Recipient pour ajouter le support email
 declare module '@afidos/nestjs-event-notifications' {
@@ -28,19 +29,57 @@ declare module '@afidos/nestjs-event-notifications' {
     driver: 'smtp',
     description: 'Provider pour notifications email via SMTP'
 })
-export class EmailProvider extends NotificationProviderBase<'email'> {
+@Injectable()
+export class EmailProvider implements NotificationProvider {
+    readonly name = 'EmailProvider';
+    readonly channel = 'email';
     protected readonly property = 'email';
     private readonly logger = new Logger(EmailProvider.name);
 
     constructor(
-        recipientLoader: RecipientLoader,
+        private readonly recipientLoader: RecipientLoader,
         private readonly smtpDriver: SmtpDriver,
         private readonly fromEmail: string = 'noreply@example.com'
-    ) {
-        super(recipientLoader);
+    ) {}
+
+    async send(payload: any, context: NotificationContext): Promise<NotificationResult> {
+        try {
+            // 1. Charger tous les destinataires pour cet événement
+            const allRecipients = await this.recipientLoader.load(context.eventType, payload);
+
+            // 2. Filtrer par la propriété email
+            const emailRecipients = this.filterRecipientsByProperty(allRecipients, 'email');
+
+            if (emailRecipients.length === 0) {
+                return {
+                    channel: this.getChannelName(),
+                    provider: this.getProviderName(),
+                    status: 'skipped',
+                    sentAt: new Date(),
+                    attempts: context.attempt,
+                    metadata: { reason: 'No email recipients found' }
+                };
+            }
+
+            // 3. Prendre le premier recipient
+            const recipient = emailRecipients[0];
+            const address = recipient.email as string;
+            
+            return await this.sendToAddress(address, context.eventType, payload, recipient, context);
+
+        } catch (error) {
+            return {
+                channel: this.getChannelName(),
+                provider: this.getProviderName(),
+                status: 'failed',
+                error: `Failed to send: ${error.message}`,
+                sentAt: new Date(),
+                attempts: context.attempt
+            };
+        }
     }
 
-    protected async sendToAddress(
+    private async sendToAddress(
         address: string,
         eventType: string,
         payload: any,
@@ -80,7 +119,7 @@ export class EmailProvider extends NotificationProviderBase<'email'> {
 
         } catch (error) {
             const duration = Date.now() - startTime;
-            
+
             this.logger.error(`Failed to send email to ${address} for event ${eventType}: ${error.message}`);
 
             return {
@@ -97,6 +136,34 @@ export class EmailProvider extends NotificationProviderBase<'email'> {
                 }
             };
         }
+    }
+
+    /**
+     * Filtre les recipients qui ont une adresse pour une propriété donnée
+     */
+    private filterRecipientsByProperty<K extends keyof Recipient>(
+        recipients: Recipient[],
+        property: K
+    ): Recipient[] {
+        return recipients.filter(recipient => {
+            const address = recipient[property];
+            return address !== undefined && address !== null && address !== '';
+        });
+    }
+
+    /**
+     * Retourne le nom du provider pour les logs et métadonnées
+     */
+    private getProviderName(): string {
+        return this.constructor.name;
+    }
+
+    /**
+     * Récupère le nom du canal depuis les métadonnées du décorateur @InjectableNotifier
+     */
+    private getChannelName(): string {
+        const metadata = getNotifierMetadata(this.constructor);
+        return metadata?.channel || 'unknown';
     }
 
     /**
@@ -202,5 +269,12 @@ export class EmailProvider extends NotificationProviderBase<'email'> {
             this.logger.error(`Email provider health check failed: ${error.message}`);
             return false;
         }
+    }
+
+    /**
+     * Valide la configuration du provider
+     */
+    validateConfig(_config: any): boolean | string[] {
+        return true;
     }
 }

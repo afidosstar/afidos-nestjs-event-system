@@ -4,7 +4,7 @@ import {
     EventTypesConfig,
     NotificationResult,
     NotificationContext,
-    NotificationProvider as NotificationProviderBase
+    NotificationProvider
 } from '../types/interfaces';
 import { RecipientLoader } from '../loaders/recipient-loader.interface';
 import { NotifierRegistry } from '../decorators/injectable-notifier.decorator';
@@ -132,7 +132,7 @@ export class NotificationOrchestratorService {
         }
 
         // 2. Récupère l'instance du provider depuis le container NestJS
-        let providerInstance: NotificationProviderBase;
+        let providerInstance: NotificationProvider;
         try {
             providerInstance = this.moduleRef.get(ProviderClass, { strict: false });
         } catch (error) {

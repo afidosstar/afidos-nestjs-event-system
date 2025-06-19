@@ -38,8 +38,6 @@ export { SmtpDriver } from './drivers/smtp.driver';
 // Loaders et interfaces étendues
 export { RecipientLoader, Recipient } from './loaders/recipient-loader.interface';
 
-// Base class pour providers
-
 // Décorateur pour providers de notification
 export {
     InjectableNotifier,

@@ -3,6 +3,7 @@
 // ================================
 
 import {EventPayloads, EventTypesConfig, NotificationProviderConfig, PackageConfig } from './types/interfaces';
+import { DriversModule } from './module/drivers.module';
 
 // Module principal
 export { EventNotificationsModule } from './module/event-notifications.module';
@@ -47,6 +48,7 @@ export {
     InjectableNotifier,
     NotifierRegistry,
     discoverNotificationProviders,
+    discoverAllNotificationProviders,
     getNotifierMetadata
 } from './decorators/injectable-notifier.decorator';
 export type { NotifierMetadata } from './decorators/injectable-notifier.decorator';
@@ -137,5 +139,26 @@ export function createPackageConfig<T extends EventPayloads>(
     // Channels will be validated at runtime based on available providers
 
     return config;
+}
+
+/**
+ * Helper pour filtrer les providers selon les drivers configurés
+ * 
+ * @example
+ * ```typescript
+ * // Au lieu d'importer tous les providers
+ * providers: [EmailProvider, TelegramProvider, WebhookProvider]
+ * 
+ * // Filtrer selon les drivers disponibles
+ * providers: [
+ *     ...filterProvidersByDrivers([EmailProvider, TelegramProvider, WebhookProvider], packageConfig)
+ * ]
+ * ```
+ */
+export function filterProvidersByDrivers<T extends EventPayloads>(
+    providers: any[],
+    config: PackageConfig<T>
+): any[] {
+    return DriversModule.filterProvidersByAvailableDrivers(providers, config);
 }
 

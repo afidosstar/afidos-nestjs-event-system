@@ -3,6 +3,7 @@ import { HttpDriver, HttpDriverConfig } from '../drivers/http.driver';
 import { SmtpDriver, SmtpDriverConfig as SmtpDriverConfigInternal } from '../drivers/smtp.driver';
 import { PackageConfig, EventPayloads } from '../types/interfaces';
 import { SmtpDriverConfig } from '../types/driver.types';
+import { NotifierRegistry } from '../decorators/injectable-notifier.decorator';
 
 /**
  * Module pour la gestion dynamique des drivers basée sur la configuration
@@ -23,6 +24,10 @@ export class DriversModule {
     ): DynamicModule {
         const driverProviders: Provider[] = [];
         const exports: any[] = [];
+
+        // Configurer les drivers disponibles dans le registry
+        const configuredDrivers = this.getConfiguredDrivers(config);
+        NotifierRegistry.setConfiguredDrivers(configuredDrivers);
 
         // HttpDriver si configuré
         if (config.drivers?.http) {
@@ -78,7 +83,13 @@ export class DriversModule {
             providers: [
                 {
                     provide: 'DRIVERS_CONFIG_ASYNC',
-                    useFactory: options.useFactory,
+                    useFactory: async (...args: any[]) => {
+                        const config = await options.useFactory(...args);
+                        // Configurer les drivers disponibles dans le registry
+                        const configuredDrivers = this.getConfiguredDrivers(config);
+                        NotifierRegistry.setConfiguredDrivers(configuredDrivers);
+                        return config;
+                    },
                     inject: options.inject || [],
                 },
                 {
@@ -138,6 +149,26 @@ export class DriversModule {
     }
 
     /**
+     * Version asynchrone pour mode Worker uniquement
+     */
+    static forWorkerAsync<T extends EventPayloads = EventPayloads>(options: {
+        useFactory: (...args: any[]) => Promise<PackageConfig<T>> | PackageConfig<T>;
+        inject?: any[];
+    }): DynamicModule {
+        return this.forRootAsync(options);
+    }
+
+    /**
+     * Version asynchrone pour mode API uniquement
+     */
+    static forApiAsync<T extends EventPayloads = EventPayloads>(options: {
+        useFactory: (...args: any[]) => Promise<PackageConfig<T>> | PackageConfig<T>;
+        inject?: any[];
+    }): DynamicModule {
+        return this.forRootAsync(options);
+    }
+
+    /**
      * Méthode utilitaire pour vérifier quels drivers sont configurés
      */
     static getConfiguredDrivers<T extends EventPayloads = EventPayloads>(
@@ -154,6 +185,39 @@ export class DriversModule {
         }
         
         return drivers;
+    }
+
+    /**
+     * Méthode utilitaire pour filtrer les providers selon les drivers disponibles
+     */
+    static filterProvidersByAvailableDrivers<T extends EventPayloads = EventPayloads>(
+        providers: any[],
+        config: PackageConfig<T>
+    ): any[] {
+        const configuredDrivers = this.getConfiguredDrivers(config);
+        const filteredProviders: any[] = [];
+
+        for (const provider of providers) {
+            // Récupérer les métadonnées du provider
+            const metadata = Reflect.getMetadata('injectable-notifier', provider);
+            
+            if (metadata && metadata.driver) {
+                // Vérifier si le driver requis est configuré
+                if (configuredDrivers.includes(metadata.driver)) {
+                    filteredProviders.push(provider);
+                } else {
+                    console.warn(
+                        `[DriversModule] Provider '${provider.name}' ignoré car le driver '${metadata.driver}' n'est pas configuré. ` +
+                        `Drivers disponibles: [${configuredDrivers.join(', ')}]`
+                    );
+                }
+            } else {
+                // Provider sans driver spécifique, on l'inclut
+                filteredProviders.push(provider);
+            }
+        }
+
+        return filteredProviders;
     }
 
     /**

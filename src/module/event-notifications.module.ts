@@ -261,4 +261,108 @@ export class EventNotificationsModule {
             global: true
         };
     }
+
+    /**
+     * Configuration asynchrone pour mode Worker uniquement
+     */
+    static forWorkerAsync<T extends EventPayloads = EventPayloads>(options: {
+        useFactory: (...args: any[]) => Promise<PackageConfig<T>> | PackageConfig<T>;
+        inject?: any[];
+    }): DynamicModule {
+        return {
+            module: EventNotificationsModule,
+            imports: [
+                DriversModule.forWorkerAsync(options)
+            ],
+            providers: [
+                {
+                    provide: EVENT_NOTIFICATIONS_CONFIG,
+                    useFactory: options.useFactory,
+                    inject: options.inject || [],
+                },
+                {
+                    provide: EVENT_TYPES_CONFIG,
+                    useFactory: async (...args: any[]) => {
+                        const config = await options.useFactory(...args);
+                        return config.eventTypes;
+                    },
+                    inject: options.inject || [],
+                },
+                {
+                    provide: PROVIDERS_CONFIG,
+                    useFactory: async (...args: any[]) => {
+                        const config = await options.useFactory(...args);
+                        return config.providers || {};
+                    },
+                    inject: options.inject || [],
+                },
+                EventEmitterService,
+                NotificationOrchestratorService,
+                QueueManagerService,
+                HandlerQueueManagerService,
+                EventHandlerManagerService,
+            ],
+            exports: [
+                EventEmitterService,
+                NotificationOrchestratorService,
+                QueueManagerService,
+                HandlerQueueManagerService,
+                EventHandlerManagerService,
+                EVENT_NOTIFICATIONS_CONFIG,
+                EVENT_TYPES_CONFIG,
+                PROVIDERS_CONFIG
+            ],
+            global: true
+        };
+    }
+
+    /**
+     * Configuration asynchrone pour mode API uniquement
+     */
+    static forApiAsync<T extends EventPayloads = EventPayloads>(options: {
+        useFactory: (...args: any[]) => Promise<PackageConfig<T>> | PackageConfig<T>;
+        inject?: any[];
+    }): DynamicModule {
+        return {
+            module: EventNotificationsModule,
+            imports: [
+                DriversModule.forApiAsync(options)
+            ],
+            providers: [
+                {
+                    provide: EVENT_NOTIFICATIONS_CONFIG,
+                    useFactory: options.useFactory,
+                    inject: options.inject || [],
+                },
+                {
+                    provide: EVENT_TYPES_CONFIG,
+                    useFactory: async (...args: any[]) => {
+                        const config = await options.useFactory(...args);
+                        return config.eventTypes;
+                    },
+                    inject: options.inject || [],
+                },
+                {
+                    provide: PROVIDERS_CONFIG,
+                    useFactory: async (...args: any[]) => {
+                        const config = await options.useFactory(...args);
+                        return config.providers || {};
+                    },
+                    inject: options.inject || [],
+                },
+                EventEmitterService,
+                NotificationOrchestratorService,
+                EventHandlerManagerService,
+            ],
+            exports: [
+                EventEmitterService,
+                NotificationOrchestratorService,
+                EventHandlerManagerService,
+                EVENT_NOTIFICATIONS_CONFIG,
+                EVENT_TYPES_CONFIG,
+                PROVIDERS_CONFIG
+            ],
+            global: true
+        };
+    }
 }

@@ -29,6 +29,7 @@ export const NOTIFIER_METADATA_KEY = 'injectable-notifier';
 export class NotifierRegistry {
     private static providers = new Map<string, any>();
     private static metadata = new Map<string, NotifierMetadata>();
+    private static configuredDrivers: string[] = [];
 
     /**
      * Enregistre un provider de notification
@@ -52,10 +53,49 @@ export class NotifierRegistry {
     }
 
     /**
+     * Configure les drivers disponibles
+     */
+    static setConfiguredDrivers(drivers: string[]): void {
+        this.configuredDrivers = [...drivers];
+    }
+
+    /**
      * Récupère tous les providers enregistrés
      */
     static getProviders(): any[] {
         return Array.from(this.providers.values());
+    }
+
+    /**
+     * Récupère tous les providers enregistrés filtrés par les drivers configurés
+     */
+    static getProvidersForConfiguredDrivers(): any[] {
+        if (this.configuredDrivers.length === 0) {
+            // Si aucun driver configuré, retourner tous les providers
+            return this.getProviders();
+        }
+
+        const filteredProviders: any[] = [];
+        
+        for (const [providerName, provider] of this.providers.entries()) {
+            const metadata = this.metadata.get(providerName);
+            
+            if (metadata && metadata.driver) {
+                if (this.configuredDrivers.includes(metadata.driver)) {
+                    filteredProviders.push(provider);
+                } else {
+                    console.warn(
+                        `[NotifierRegistry] Provider '${providerName}' ignoré car le driver '${metadata.driver}' n'est pas configuré. ` +
+                        `Drivers disponibles: [${this.configuredDrivers.join(', ')}]`
+                    );
+                }
+            } else {
+                // Provider sans driver spécifique, on l'inclut
+                filteredProviders.push(provider);
+            }
+        }
+
+        return filteredProviders;
     }
 
     /**
@@ -232,7 +272,7 @@ export function InjectableNotifier(metadata: NotifierMetadata) {
 
 /**
  * Fonction utilitaire pour découvrir automatiquement tous les providers
- * de notification enregistrés
+ * de notification enregistrés (filtrés selon les drivers configurés)
  *
  * @example
  * ```typescript
@@ -246,6 +286,14 @@ export function InjectableNotifier(metadata: NotifierMetadata) {
  * ```
  */
 export function discoverNotificationProviders(): any[] {
+    return NotifierRegistry.getProvidersForConfiguredDrivers();
+}
+
+/**
+ * Fonction utilitaire pour découvrir tous les providers sans filtrage
+ * (utilisée pour les cas où on veut tous les providers même sans drivers)
+ */
+export function discoverAllNotificationProviders(): any[] {
     return NotifierRegistry.getProviders();
 }
 

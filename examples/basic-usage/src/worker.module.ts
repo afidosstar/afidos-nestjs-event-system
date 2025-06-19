@@ -1,9 +1,8 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { 
-    EventNotificationsModule, 
-    HttpDriver, 
-    SmtpDriver 
+    EventNotificationsModule,
+    filterProvidersByDrivers
 } from '@afidos/nestjs-event-notifications';
 
 // Providers
@@ -62,28 +61,11 @@ import { Order } from './order/order.entity';
         })
     ],
     providers: [
-        // Drivers
-        HttpDriver,
-        {
-            provide: SmtpDriver,
-            useFactory: () => new SmtpDriver({
-                host: process.env.SMTP_HOST || 'smtp.gmail.com',
-                port: parseInt(process.env.SMTP_PORT || '587'),
-                secure: process.env.SMTP_PORT === '465',
-                auth: {
-                    user: process.env.SMTP_USER || 'your-email@gmail.com',
-                    pass: process.env.SMTP_PASS || 'your-password'
-                }
-            })
-        },
-
         // Recipient loader
         StaticRecipientLoader,
 
-        // Providers de notifications (auto-découverte via @InjectableNotifier)
-        EmailProvider,
-        TelegramProvider,
-        WebhookProvider
+        // Providers de notifications - Filtrés automatiquement selon les drivers configurés
+        ...filterProvidersByDrivers([EmailProvider, TelegramProvider, WebhookProvider], packageConfig)
     ]
 })
 export class WorkerModule {}

@@ -5,6 +5,43 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/),
 et ce projet adhère au [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.4] - 2025-06-19
+
+### 🏗️ Améliorations Architecture et DriversModule
+
+#### DriversModule pour l'Injection Dynamique
+- **Nouveau `DriversModule`** pour la gestion centralisée des drivers
+- **Injection dynamique** des configurations de drivers
+- **Support des providers personnalisés** avec configuration flexible
+- **Architecture modulaire** améliorée pour l'extensibilité
+
+#### Améliorations @InjectableNotifier
+- **Validation renforcée** du décorateur avec vérifications strictes
+- **Meilleurs messages d'erreur** pour les configurations invalides
+- **Support des héritages complexes** de classes
+- **Documentation des métadonnées** améliorée
+
+#### Optimisations des Modules
+- **Restructuration des imports** pour éviter les dépendances circulaires
+- **Amélioration de l'injection** des services dans les modules
+- **Configuration simplifiée** des modules examples
+- **Nettoyage des exports** inutiles
+
+### 🔧 Corrections et Optimisations
+
+#### Stabilité et Performance
+- **Résolution des warnings** TypeScript
+- **Optimisation des imports** et des dépendances
+- **Amélioration de la configuration** des modules examples
+- **Nettoyage du code** et suppression de redondances
+
+#### Examples
+- **Mise à jour des modules examples** avec nouvelle architecture
+- **Configuration simplifiée** des workers
+- **Support amélioré** des environnements de développement
+
+---
+
 ## [1.0.3] - 2025-01-19
 
 ### 🎯 Nouvelle Fonctionnalité Majeure : Event Handler System

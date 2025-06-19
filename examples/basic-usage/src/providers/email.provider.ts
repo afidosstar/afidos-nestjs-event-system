@@ -54,7 +54,7 @@ export class EmailProvider extends BaseNotificationProvider {
             // 3. Prendre le premier recipient
             const recipient = emailRecipients[0];
             const address = recipient.email as string;
-            
+
             return await this.sendToAddress(address, context.eventType, payload, recipient, context);
 
         } catch (error) {
@@ -218,3 +218,4 @@ export class EmailProvider extends BaseNotificationProvider {
         return true;
     }
 }
+

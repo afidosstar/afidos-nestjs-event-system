@@ -92,24 +92,92 @@ export class NotifierRegistry {
 }
 
 /**
- * Valide qu'une classe étend NotificationProviderBase
+ * Valide qu'une classe implémente NotificationProvider ou hérite de BaseNotificationProvider
  */
 function validateNotificationProvider(target: any): void {
-    // Vérification que la classe a les méthodes requises (signature de NotificationProviderBase)
+    const className = target.name;
+
+    // 1. Vérifier que la classe a les méthodes requises de l'interface NotificationProvider
     const hasRequiredMethods = typeof target.prototype?.send === 'function' &&
                               typeof target.prototype?.validateConfig === 'function' &&
                               typeof target.prototype?.healthCheck === 'function';
 
     if (!hasRequiredMethods) {
         throw new Error(
-            `La classe ${target.name} doit implémenter NotificationProvider avec ` +
-            `les méthodes send(), validateConfig() et healthCheck().`
+            `@InjectableNotifier ne peut être appliqué qu'à des classes qui implémentent NotificationProvider ou héritent de BaseNotificationProvider.\n` +
+            `La classe ${className} doit avoir les méthodes: send(), validateConfig(), healthCheck().\n` +
+            `Vérifiez que votre classe implémente NotificationProvider ou hérite de BaseNotificationProvider.`
         );
     }
 
-    // Vérification que la classe implémente l'interface NotificationProvider
-    // On vérifie la présence des propriétés requises
-    const hasRequiredProperties = target.prototype?.constructor?.name !== undefined;
+    // 2. Vérifier que la classe hérite de BaseNotificationProvider OU implémente directement NotificationProvider
+    const extendsBaseNotificationProvider = checkIfExtendsBaseNotificationProvider(target);
+    const implementsNotificationProviderDirectly = checkIfImplementsNotificationProviderDirectly(target);
+
+    if (!extendsBaseNotificationProvider && !implementsNotificationProviderDirectly) {
+        throw new Error(
+            `@InjectableNotifier ne peut être appliqué qu'à des classes qui implémentent NotificationProvider ou héritent de BaseNotificationProvider.\n` +
+            `La classe ${className} ne semble ni hériter de BaseNotificationProvider ni implémenter correctement NotificationProvider.\n` +
+            `Solutions:\n` +
+            `1. Faites hériter votre classe de BaseNotificationProvider: "class ${className} extends BaseNotificationProvider"\n` +
+            `2. Ou implémentez directement NotificationProvider: "class ${className} implements NotificationProvider"`
+        );
+    }
+}
+
+/**
+ * Vérifie si une classe hérite de BaseNotificationProvider
+ */
+function checkIfExtendsBaseNotificationProvider(target: any): boolean {
+    let currentClass = target;
+    
+    // Parcourir la chaîne de prototypes pour chercher BaseNotificationProvider
+    while (currentClass && currentClass.prototype) {
+        // Vérifier le nom de la classe parent
+        const parentClass = Object.getPrototypeOf(currentClass);
+        if (parentClass && parentClass.name === 'BaseNotificationProvider') {
+            return true;
+        }
+        
+        // Vérifier si la classe a des méthodes caractéristiques de BaseNotificationProvider
+        const hasBaseProviderMethods = typeof currentClass.prototype?.filterRecipientsByProperty === 'function' &&
+                                     typeof currentClass.prototype?.createSkippedResult === 'function' &&
+                                     typeof currentClass.prototype?.getChannelName === 'function';
+        
+        if (hasBaseProviderMethods) {
+            return true;
+        }
+        
+        currentClass = parentClass;
+        
+        // Éviter une boucle infinie
+        if (currentClass === Object || currentClass === Function) {
+            break;
+        }
+    }
+    
+    return false;
+}
+
+/**
+ * Vérifie si une classe implémente directement NotificationProvider (sans hériter de BaseNotificationProvider)
+ */
+function checkIfImplementsNotificationProviderDirectly(target: any): boolean {
+    // Si la classe hérite de BaseNotificationProvider, ce n'est pas une implémentation directe
+    if (checkIfExtendsBaseNotificationProvider(target)) {
+        return false;
+    }
+    
+    // Vérifier que la classe a toutes les méthodes requises ET ne hérite pas de BaseNotificationProvider
+    const hasAllMethods = typeof target.prototype?.send === 'function' &&
+                         typeof target.prototype?.validateConfig === 'function' &&
+                         typeof target.prototype?.healthCheck === 'function';
+    
+    // Vérifier que ce n'est pas juste une classe avec des méthodes au hasard
+    // Une vraie implémentation devrait avoir une structure cohérente
+    const hasReasonableStructure = target.prototype?.constructor === target;
+    
+    return hasAllMethods && hasReasonableStructure;
 }
 
 /**

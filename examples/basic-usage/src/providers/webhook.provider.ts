@@ -103,7 +103,7 @@ export class WebhookProvider extends BaseNotificationProvider {
                 }
             };
 
-            const response = await this.httpDriver.post(address, webhookPayload, { headers });
+            const response = await this.httpDriver.post(address, webhookPayload, headers);
 
             const duration = Date.now() - startTime;
             const isSuccess = response.status >= 200 && response.status < 300;

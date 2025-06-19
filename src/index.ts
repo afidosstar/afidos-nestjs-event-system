@@ -16,19 +16,19 @@ export { HandlerQueueManagerService } from './services/handler-queue-manager.ser
 
 // Interfaces et types pour les handlers
 export { EventHandler } from './interfaces/event-handler.interface';
-export { 
-    HandlerQueueConfig, 
-    QueuedHandlerJob, 
-    EventHandlerContext 
+export {
+    HandlerQueueConfig,
+    QueuedHandlerJob,
+    EventHandlerContext
 } from './types/handler-queue.types';
 
 // Décorateurs et utilitaires pour les handlers
-export { 
-    InjectableHandler, 
-    HandlerMetadata, 
+export {
+    InjectableHandler,
+    HandlerMetadata,
     HandlerRegistry,
     discoverEventHandlers,
-    getHandlerMetadata 
+    getHandlerMetadata
 } from './decorators/injectable-handler.decorator';
 
 // Drivers préconçus
@@ -39,10 +39,9 @@ export { SmtpDriver } from './drivers/smtp.driver';
 export { RecipientLoader, Recipient } from './loaders/recipient-loader.interface';
 
 // Base class pour providers
-export { NotificationProvider as NotificationProviderBase } from './providers/base/notification-provider.base';
 
 // Décorateur pour providers de notification
-export { 
+export {
     InjectableNotifier,
     NotifierRegistry,
     discoverNotificationProviders,

@@ -8,9 +8,11 @@ Une librairie moderne et extensible pour gérer les notifications d'événements
 - **🔒 Extensions d'interface TypeScript** - Type safety garantie avec support des propriétés dynamiques
 - **📧 Providers extensibles** - Email, Telegram, Webhook pré-conçus + créez les vôtres
 - **🎯 RecipientLoader** - Résolution dynamique des destinataires
-- **🔍 Auto-découverte** - Décorateur `@InjectableNotifier` pour découverte automatique des providers
+- **🔍 Auto-découverte** - Décorateurs `@InjectableNotifier` et `@InjectableHandler` pour découverte automatique
 - **⚡ Gestion intelligente des queues** - Modes `api`, `worker`, `hybrid` avec Redis
 - **⚙️ Configuration simplifiée** - Plus besoin de configuration manuelle des providers
+- **🎯 Event Handler System** - Pattern handlers pour logique métier (analytics, audit, workflows)
+- **🔄 Dual Processing** - Notifications externes + Handlers métier en parallèle
 
 ## 📦 Installation
 
@@ -20,28 +22,145 @@ npm install @afidos/nestjs-event-notifications
 
 ## 🏗️ Architecture
 
-La librairie suit une architecture simple et extensible :
+La librairie suit une architecture modulaire basée sur les patterns **Event-Driven Architecture**, **Publisher-Subscriber** et **Handler Pattern**. Elle supporte deux approches complémentaires :
 
-### Drivers (Transport)
-- **HttpDriver** - Pour toutes les communications HTTP (APIs, webhooks, Telegram, etc.)
-- **SmtpDriver** - Pour l'envoi d'emails avec nodemailer
+### Vue d'ensemble
 
-### Providers (Business Logic)
-Les providers s'auto-enregistrent avec `@InjectableNotifier` et étendent l'interface `Recipient` :
+```mermaid
+graph TB
+    %% Application Layer
+    subgraph APP["🚀 APPLICATION LAYER"]
+        CTRL[Controllers]
+        SERV[Services]
+        COMP[Components]
+    end
+
+    %% Event Emitter
+    subgraph EMIT["📡 EVENT EMISSION"]
+        EES[EventEmitterService&lt;T&gt;<br/>• emitAsync/emitSync<br/>• Type-safe payloads<br/>• Correlation tracking]
+    end
+
+    %% Processing Layer
+    subgraph PROC["⚙️ PROCESSING LAYER"]
+        subgraph NOTIF["📧 NOTIFICATION SYSTEM"]
+            NOS[NotificationOrchestrator<br/>Service]
+            NPB[NotificationProviderBase]
+            
+            subgraph PROVIDERS["Notification Providers"]
+                EP[📧 EmailProvider<br/>@InjectableNotifier]
+                TP[📱 TelegramProvider<br/>@InjectableNotifier]
+                WP[🔗 WebhookProvider<br/>@InjectableNotifier]
+                CP[⚡ Custom Providers<br/>@InjectableNotifier]
+            end
+        end
+
+        subgraph HANDLE["🎯 EVENT HANDLER SYSTEM"]
+            EHM[EventHandlerManager<br/>Service]
+            
+            subgraph HANDLERS["Event Handlers"]
+                UH[👤 UserAnalyticsHandler<br/>@InjectableHandler]
+                AH[📋 AuditLogHandler<br/>@InjectableHandler]
+                WH[⚡ WorkflowHandler<br/>@InjectableHandler]
+                CH[🔧 Custom Handlers<br/>@InjectableHandler]
+            end
+        end
+    end
+
+    %% Queue Layer
+    subgraph QUEUE["⏱️ QUEUE MANAGEMENT"]
+        QMS[QueueManagerService<br/>• Notification Queues<br/>• Retry Logic<br/>• Health Monitoring]
+        HQMS[HandlerQueueManager<br/>Service<br/>• Handler-specific Queues<br/>• Priority Management<br/>• Concurrency Control]
+        
+        subgraph REDIS["🔴 REDIS QUEUES"]
+            NQ[Notification Queue]
+            HQ[Handler Queues]
+            CQ[Custom Queues]
+        end
+    end
+
+    %% Transport Layer
+    subgraph TRANSPORT["🌐 TRANSPORT LAYER"]
+        HD[HTTP Driver<br/>• REST APIs<br/>• Webhooks<br/>• Telegram API]
+        SD[SMTP Driver<br/>• Email Transport<br/>• Templates<br/>• Attachments]
+    end
+
+    %% External Systems
+    subgraph EXT["🌍 EXTERNAL SYSTEMS"]
+        EMAIL[📧 Email Servers]
+        TELEGRAM[📱 Telegram Bot API]
+        WEBHOOKS[🔗 Webhook URLs]
+        APIS[⚡ Custom APIs]
+    end
+
+    %% Connections
+    APP --> EMIT
+    EMIT --> PROC
+    
+    PROC --> QUEUE
+    
+    NOTIF --> NPB
+    NPB --> PROVIDERS
+    
+    HANDLE --> HANDLERS
+    
+    QUEUE --> REDIS
+    QMS --> NQ
+    HQMS --> HQ
+    HQMS --> CQ
+    
+    PROVIDERS --> TRANSPORT
+    EP --> SD
+    TP --> HD
+    WP --> HD
+    CP --> HD
+    
+    TRANSPORT --> EXT
+    SD --> EMAIL
+    HD --> TELEGRAM
+    HD --> WEBHOOKS
+    HD --> APIS
+
+    %% Styling
+    classDef appLayer fill:#e1f5fe,stroke:#01579b,stroke-width:2px
+    classDef emitLayer fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    classDef procLayer fill:#e8f5e8,stroke:#1b5e20,stroke-width:2px
+    classDef queueLayer fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    classDef transportLayer fill:#fce4ec,stroke:#880e4f,stroke-width:2px
+    classDef extLayer fill:#f1f8e9,stroke:#33691e,stroke-width:2px
+    
+    class APP appLayer
+    class EMIT emitLayer
+    class PROC,NOTIF,HANDLE procLayer
+    class QUEUE,REDIS queueLayer
+    class TRANSPORT transportLayer
+    class EXT extLayer
+```
+
+### 1. Système de Notifications (Communication Externe)
 - **EmailProvider** - Utilise SmtpDriver + `{ email?, firstName?, lastName? }`
 - **TelegramProvider** - Utilise HttpDriver + `{ telegramId?, telegramUsername? }`
 - **WebhookProvider** - Utilise HttpDriver + `{ webhookUrl?, webhookHeaders? }`
+- **Auto-découverte** avec `@InjectableNotifier`
 
-### Auto-découverte
-Le système `NotifierRegistry` découvre automatiquement les providers via le décorateur `@InjectableNotifier`.
+### 2. Système d'Event Handlers (Logique Métier)
+- **UserAnalyticsHandler** - Traitement analytics des événements utilisateur
+- **AuditLogHandler** - Audit et logging de tous les événements  
+- **WorkflowHandler** - Orchestration de workflows métier
+- **Auto-découverte** avec `@InjectableHandler`
 
-### Gestion des Queues
+### 3. Drivers (Transport)
+- **HttpDriver** - Communications HTTP (APIs, webhooks, Telegram, etc.)
+- **SmtpDriver** - Envoi d'emails avec nodemailer
+
+### 4. Gestion des Queues
 - **Mode `api`** : Traitement immédiat uniquement
 - **Mode `worker`** : Queue Redis obligatoire, traitement différé
 - **Mode `hybrid`** : Queue si disponible, sinon traitement immédiat
 
-### RecipientLoader
+### 5. RecipientLoader
 Interface pour résoudre dynamiquement les destinataires selon le type d'événement.
+
+📖 **Documentation complète** : Consultez [ARCHITECTURE.md](./ARCHITECTURE.md) pour une vue détaillée de l'architecture.
 
 ## 🚀 Démarrage Rapide
 
@@ -168,7 +287,183 @@ REDIS_HOST=localhost
 REDIS_PORT=6379
 ```
 
-### 4. Créer un Provider (Optionnel)
+### 4. Créer un Event Handler (Nouveau v1.0.3)
+
+Les **Event Handlers** permettent d'exécuter de la logique métier en réaction aux événements (analytics, audit, workflows, etc.). Ils s'exécutent **en parallèle** des notifications.
+
+```typescript
+// handlers/user-analytics.handler.ts
+import { Injectable, Logger } from '@nestjs/common';
+import {
+    EventHandler,
+    InjectableHandler,
+    EventHandlerContext
+} from '@afidos/nestjs-event-notifications';
+
+@InjectableHandler({
+    name: 'UserAnalyticsHandler',
+    eventTypes: ['user.created', 'user.updated', 'user.deleted'],
+    priority: 100, // Plus élevé = traité en premier
+    queue: {
+        processing: 'async', // 'sync', 'async', 'delayed'
+        priority: 8,
+        retry: { 
+            attempts: 3, 
+            backoff: { type: 'exponential', delay: 2000 } 
+        },
+        timeout: 30000,
+        concurrency: 5
+    }
+})
+@Injectable()
+export class UserAnalyticsHandler implements EventHandler {
+    private readonly logger = new Logger(UserAnalyticsHandler.name);
+
+    getName(): string {
+        return 'UserAnalyticsHandler';
+    }
+
+    getEventTypes(): string[] {
+        return ['user.created', 'user.updated', 'user.deleted'];
+    }
+
+    getPriority(): number {
+        return 100;
+    }
+
+    canHandle(eventType: string): boolean {
+        return this.getEventTypes().includes(eventType);
+    }
+
+    async execute(
+        eventType: string, 
+        payload: any, 
+        context: EventHandlerContext
+    ): Promise<any> {
+        this.logger.log(`Traitement analytics pour ${eventType}`);
+
+        switch (eventType) {
+            case 'user.created':
+                await this.trackUserRegistration(payload);
+                break;
+            case 'user.updated':
+                await this.trackUserUpdate(payload);
+                break;
+            case 'user.deleted':
+                await this.trackUserDeletion(payload);
+                break;
+        }
+
+        return { 
+            processed: true, 
+            timestamp: new Date(),
+            analytics: 'updated'
+        };
+    }
+
+    // Lifecycle callbacks (optionnels)
+    async beforeQueue(eventType: string, payload: any, context: EventHandlerContext): Promise<void> {
+        this.logger.debug(`Préparation queue pour ${eventType}`);
+    }
+
+    async afterExecute(eventType: string, payload: any, result: any, context: EventHandlerContext): Promise<void> {
+        this.logger.log(`Analytics terminé pour ${eventType}: ${JSON.stringify(result)}`);
+    }
+
+    async onError(error: Error, eventType: string, payload: any, context: EventHandlerContext): Promise<void> {
+        this.logger.error(`Erreur analytics ${eventType}: ${error.message}`);
+        // Optionnel: alerting, fallback logic, etc.
+    }
+
+    async isHealthy(): Promise<boolean> {
+        // Vérification de la santé (connexion DB, API externes, etc.)
+        return true;
+    }
+
+    private async trackUserRegistration(payload: any) {
+        // Logique analytics pour inscription
+        // Ex: envoyer à Google Analytics, Mixpanel, etc.
+    }
+
+    private async trackUserUpdate(payload: any) {
+        // Logique analytics pour modification
+    }
+
+    private async trackUserDeletion(payload: any) {
+        // Logique analytics pour suppression
+    }
+}
+```
+
+### Handler pour Audit (Wildcard)
+
+```typescript
+// handlers/audit-log.handler.ts
+@InjectableHandler({
+    name: 'AuditLogHandler',
+    eventTypes: ['*'], // Traite TOUS les événements
+    priority: 50,
+    queue: {
+        processing: 'sync' // Exécution immédiate pour audit
+    }
+})
+@Injectable()
+export class AuditLogHandler implements EventHandler {
+    private readonly logger = new Logger(AuditLogHandler.name);
+
+    async execute(eventType: string, payload: any, context: EventHandlerContext): Promise<any> {
+        // Audit sécurisé (sans données sensibles)
+        const auditPayload = this.sanitizePayload(payload);
+        
+        // Enregistrement en base de données
+        await this.auditRepository.save({
+            eventType,
+            payload: auditPayload,
+            correlationId: context.correlationId,
+            timestamp: context.timestamp,
+            userId: auditPayload.userId || null
+        });
+
+        return { audited: true };
+    }
+
+    private sanitizePayload(payload: any): any {
+        // Supprime les données sensibles (mots de passe, tokens, etc.)
+        const { password, token, ...safePayload } = payload;
+        return safePayload;
+    }
+}
+```
+
+### Enregistrement des Handlers
+
+```typescript
+// app.module.ts
+@Module({
+    imports: [
+        EventNotificationsModule.forRoot(packageConfig)
+    ],
+    providers: [
+        // Drivers
+        HttpDriver,
+        SmtpDriver,
+        
+        // Notification Providers (auto-découverte)
+        EmailProvider,
+        TelegramProvider,
+        
+        // Event Handlers (auto-découverte) - NOUVEAU !
+        UserAnalyticsHandler,
+        AuditLogHandler,
+        
+        // Recipient Loader
+        StaticRecipientLoader
+    ]
+})
+export class AppModule {}
+```
+
+### 5. Créer un Provider (Optionnel)
 
 ```typescript
 // providers/email.provider.ts
@@ -286,7 +581,7 @@ export class StaticRecipientLoader implements RecipientLoader {
 }
 ```
 
-### 5. Émettre des Événements
+### 6. Émettre des Événements
 
 ```typescript
 // user.service.ts
@@ -303,7 +598,7 @@ export class UserService {
     async createUser(userData: any) {
         const user = await this.userRepository.save(userData);
 
-        // Émettre l'événement (async avec auto-découverte)
+        // Émettre l'événement (traitement dual automatique)
         const result = await this.eventEmitter.emitAsync('user.created', {
             id: user.id,
             email: user.email,
@@ -311,8 +606,38 @@ export class UserService {
             lastName: user.lastName
         });
         
-        // Le système découvre automatiquement EmailProvider et TelegramProvider
-        // via @InjectableNotifier et envoie les notifications
+        /* 
+        Le système traite automatiquement EN PARALLÈLE :
+        
+        📧 NOTIFICATIONS (Communication externe) :
+        ├─ EmailProvider → Email de bienvenue
+        └─ TelegramProvider → Notification Telegram
+
+        🎯 HANDLERS (Logique métier) :
+        ├─ UserAnalyticsHandler → Tracking analytics
+        ├─ AuditLogHandler → Logging sécurisé
+        └─ WorkflowHandler → Workflow d'onboarding
+        */
+
+        console.log('Résultat dual processing:', result);
+        /*
+        {
+          eventId: "evt_1234567890",
+          correlationId: "corr_abcdefgh",
+          mode: "async",
+          waitedForResult: false,
+          queuedAt: "2025-01-19T10:30:00.000Z",
+          results: [
+            // Notifications
+            { provider: "EmailProvider", status: "queued", jobId: "job_001" },
+            { provider: "TelegramProvider", status: "queued", jobId: "job_002" },
+            // Handlers
+            { handler: "UserAnalyticsHandler", status: "queued", jobId: "handler_001" },
+            { handler: "AuditLogHandler", status: "completed", result: { audited: true } },
+            { handler: "WorkflowHandler", status: "queued", jobId: "handler_002" }
+          ]
+        }
+        */
 
         return user;
     }
@@ -342,6 +667,58 @@ REDIS_PASSWORD=optional
 # Webhooks
 WEBHOOK_URL=https://your-webhook-url.com
 ```
+
+## 🆕 Nouveautés v1.0.3
+
+### Event Handler System (Nouveau)
+```typescript
+@InjectableHandler({
+    name: 'UserAnalyticsHandler',
+    eventTypes: ['user.created', 'user.updated'],
+    priority: 100,
+    queue: {
+        processing: 'async',
+        priority: 8,
+        retry: { attempts: 3, backoff: { type: 'exponential', delay: 2000 } }
+    }
+})
+export class UserAnalyticsHandler implements EventHandler {
+    async execute(eventType: string, payload: any, context: EventHandlerContext): Promise<any> {
+        // Logique métier (analytics, audit, workflows, etc.)
+    }
+    
+    // Lifecycle callbacks
+    async beforeQueue?(): Promise<void>
+    async afterExecute?(): Promise<void>
+    async onError?(): Promise<void>
+}
+```
+
+### Traitement Dual Automatique
+```typescript
+// UN événement → DEUX traitements en parallèle
+await eventEmitter.emitAsync('user.created', payload);
+
+/* 
+📧 NOTIFICATIONS → Communication externe
+🎯 HANDLERS → Logique métier
+Traitement complètement découplé et parallèle !
+*/
+```
+
+### Configuration Avancée des Queues
+```typescript
+interface HandlerQueueConfig {
+    processing: 'sync' | 'async' | 'delayed'
+    delay?: { ms: number; strategy?: 'fixed' | 'exponential' }
+    retry?: { attempts: number; backoff?: { type: 'fixed' | 'exponential'; delay: number } }
+    priority?: number // 1-10, 10 = plus haute priorité
+    timeout?: number
+    concurrency?: number
+}
+```
+
+---
 
 ## 🆕 Nouveautés v1.0.0
 
@@ -492,6 +869,15 @@ Les contributions sont les bienvenues ! Pour contribuer :
 [MIT](LICENSE)
 
 ## 🏷️ Version
+
+**1.0.3** - Event Handler System avec traitement dual :
+- 🎯 **Event Handler System** avec pattern Publisher-Subscriber-Handler
+- 🔄 **Traitement dual** : Notifications externes + Handlers métier en parallèle
+- ⚡ **Queues avancées** avec priorités, retry policies et concurrence
+- 🔍 **Auto-découverte handlers** via `@InjectableHandler`
+- 📊 **Lifecycle complet** avec callbacks beforeQueue/afterExecute/onError
+- 🎨 **Support wildcards** pour handlers universels (audit, logging)
+- 🏗️ **Architecture renforcée** avec résolution des dépendances circulaires
 
 **1.0.0** - Architecture modernisée avec :
 - ✨ Auto-découverte des providers via `@InjectableNotifier`

@@ -5,6 +5,149 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/),
 et ce projet adhère au [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.3] - 2025-01-19
+
+### 🎯 Nouvelle Fonctionnalité Majeure : Event Handler System
+
+#### Introduction du Pattern Event Handler
+- **Nouveau décorateur `@InjectableHandler`** pour l'auto-découverte des handlers
+- **Interface `EventHandler`** avec méthodes `execute()`, `beforeQueue()`, `afterExecute()`, `onError()`
+- **Séparation claire** entre Notifications (externes) et Handlers (logique métier)
+- **Support des wildcards** avec `eventTypes: ['*']` pour traiter tous les événements
+
+```typescript
+@InjectableHandler({
+  name: 'UserAnalyticsHandler',
+  eventTypes: ['user.created', 'user.updated'],
+  priority: 100,
+  queue: {
+    processing: 'async',
+    priority: 8,
+    retry: { attempts: 3, backoff: { type: 'exponential', delay: 2000 } }
+  }
+})
+export class UserAnalyticsHandler implements EventHandler {
+  async execute(eventType: string, payload: any, context: EventHandlerContext): Promise<any> {
+    // Logique métier (analytics, audit, workflows, etc.)
+  }
+}
+```
+
+#### Services de Gestion des Handlers
+- **`EventHandlerManagerService`** - Découverte, enregistrement et orchestration des handlers
+- **`HandlerQueueManagerService`** - Gestion des queues spécifiques aux handlers
+- **Auto-discovery et priorités** - Enregistrement automatique avec tri par priorité
+- **Gestion des erreurs avancée** - Callbacks `onError()` avec logging détaillé
+
+#### Configuration des Queues pour Handlers
+- **Configuration individuelle** par handler avec `HandlerQueueConfig`
+- **Modes de traitement** : `sync`, `async`, `delayed`
+- **Stratégies de retry** : Fixed, Exponential backoff
+- **Priorités et concurrence** : 1-10 avec contrôle de concurrence
+- **Timeout et TTL** : Gestion des timeouts et expiration des jobs
+
+```typescript
+interface HandlerQueueConfig {
+  processing: 'sync' | 'async' | 'delayed'
+  delay?: { ms: number; strategy?: 'fixed' | 'exponential' }
+  retry?: { attempts: number; backoff?: { type: 'fixed' | 'exponential'; delay: number } }
+  priority?: number // 1-10, 10 = plus haute priorité
+  timeout?: number
+  concurrency?: number
+}
+```
+
+#### Lifecycle Callbacks et Context Enrichi
+- **`beforeQueue()`** - Exécuté avant mise en queue
+- **`afterExecute()`** - Exécuté après succès
+- **`onError()`** - Gestion personnalisée des erreurs
+- **`EventHandlerContext`** enrichi avec informations de queue et métadonnées
+
+### 🏗️ Architecture Renforcée
+
+#### Résolution des Dépendances Circulaires
+- **Utilisation de `forwardRef()`** selon documentation NestJS
+- **Injection des tokens de configuration** avec forwardRef
+- **Architecture événementielle** réduisant les couplages directs
+- **Services découplés** via le pattern Publisher-Subscriber
+
+#### Traitement Parallèle Dual
+```
+EventEmitterService
+        │
+        ├─── NotificationOrchestratorService (Notifications externes)
+        └─── EventHandlerManagerService (Logique métier)
+```
+
+### 📊 Monitoring et Observabilité
+
+#### Statistiques Complètes
+- **Health checks** pour handlers et queues
+- **Métriques par handler** : succès, échecs, durée d'exécution
+- **État des queues** : nombre de jobs en attente, actifs, complétés
+- **Monitoring des priorités** et performances
+
+#### Logging Structuré
+- **Logs détaillés** par handler avec contexte
+- **Traces de corrélation** inter-services
+- **Métriques de performance** par handler et par queue
+- **Monitoring des retry** et backoff strategies
+
+### 🧪 Exemples et Documentation
+
+#### Exemples Complets
+- **`UserAnalyticsHandler`** - Handler async avec queue et retry
+- **`AuditLogHandler`** - Handler sync pour tous les événements (wildcard)
+- **Configuration avancée** avec priorités et stratégies de retry
+- **Tests unitaires** pour les nouveaux composants
+
+### ⚡ Performance et Scalabilité
+
+#### Optimisations
+- **Queues dédiées** par handler évitant les conflits
+- **Priorités granulaires** pour l'ordonnancement optimal
+- **Concurrence configurable** par handler
+- **Retry intelligent** avec backoff exponentiel
+
+#### Modes de Fonctionnement
+- **Mode API** : Handlers sync uniquement
+- **Mode Worker** : Toutes queues via Redis
+- **Mode Hybrid** : Mix sync/async selon configuration
+
+### 🔄 Compatibilité
+
+#### Rétrocompatibilité
+- **NotificationProviderBase conservé** - toujours nécessaire pour les providers
+- **API EventEmitterService inchangée** - `emitAsync()` / `emitSync()`
+- **Configuration existante** continue de fonctionner
+- **Aucun breaking change** pour les utilisateurs existants
+
+#### Migration Optionnelle
+Les handlers sont **additionnels** au système de notifications :
+- **Notifications** → Communication externe (emails, webhooks, etc.)
+- **Handlers** → Logique métier (analytics, audit, workflows, etc.)
+
+### 📈 Statistiques v1.0.3
+
+- **+8 nouveaux fichiers** pour le système d'handlers
+- **+2000 lignes de code** pour les fonctionnalités handlers
+- **Dual processing** : Notifications + Handlers en parallèle
+- **Lifecycle complet** avec callbacks avant/après/erreur
+- **Queue management avancé** avec priorités et retry policies
+- **100% type-safe** avec interfaces TypeScript strictes
+
+---
+
+## [1.0.2] - 2025-01-18
+
+### 🛠️ Corrections et Optimisations Mineures
+- **Résolution des dépendances circulaires** avec forwardRef()
+- **Nettoyage des fichiers** refactored et simple architecture
+- **Stabilisation de l'architecture** post-v1.0.0
+- **Amélioration de la configuration** EVENT_NOTIFICATIONS_CONFIG
+
+---
+
 ## [1.0.0] - 2025-01-18
 
 ### 🚀 Nouvelles Fonctionnalités Majeures

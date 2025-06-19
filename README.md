@@ -467,9 +467,9 @@ export class AppModule {}
 
 ```typescript
 // providers/email.provider.ts
-import { Logger } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import {
-    NotificationProvider,
+    BaseNotificationProvider,  // ← Classe de base avec méthodes communes
     SmtpDriver,
     RecipientLoader,
     Recipient,
@@ -493,45 +493,73 @@ declare module '@afidos/nestjs-event-notifications' {
     driver: 'smtp',          // ← Driver utilisé
     description: 'Provider pour notifications email via SMTP'
 })
-export class EmailProvider implements NotificationProvider {
-    protected readonly property = 'email';  // ← Propriété Recipient (optionnel)
+@Injectable()
+export class EmailProvider extends BaseNotificationProvider {  // ← Hérite de BaseNotificationProvider
 
     constructor(
         recipientLoader: RecipientLoader,
         private readonly smtpDriver: SmtpDriver,
         private readonly fromEmail: string = 'noreply@example.com'
     ) {
-        // Implémentation de l'interface NotificationProvider
+        super(recipientLoader);  // ← Appel du constructeur parent
     }
 
-    protected async sendToAddress(
+    async send(payload: any, context: NotificationContext): Promise<NotificationResult> {
+        try {
+            // 1. Charger tous les destinataires pour cet événement
+            const allRecipients = await this.recipientLoader.load(context.eventType, payload);
+
+            // 2. Filtrer par la propriété email (méthode héritée)
+            const emailRecipients = this.filterRecipientsByProperty(allRecipients, 'email');
+
+            if (emailRecipients.length === 0) {
+                return this.createSkippedResult(context, 'No email recipients found');  // ← Méthode héritée
+            }
+
+            // 3. Prendre le premier recipient et envoyer
+            const recipient = emailRecipients[0];
+            const address = recipient.email as string;
+            
+            return await this.sendToAddress(address, context.eventType, payload, recipient, context);
+
+        } catch (error) {
+            return this.createFailedResult(context, `Failed to send: ${error.message}`);  // ← Méthode héritée
+        }
+    }
+
+    private async sendToAddress(
         address: string,
         eventType: string,
         payload: any,
         recipient: Recipient,
         context: NotificationContext
     ): Promise<NotificationResult> {
-        const message: EmailMessage = {
-            to: address,
-            from: this.fromEmail,
-            subject: this.buildSubject(eventType, payload),
-            html: this.buildHtmlBody(eventType, payload, recipient),
-            text: this.buildTextBody(eventType, payload, recipient)
-        };
+        try {
+            const message: EmailMessage = {
+                to: address,
+                from: this.fromEmail,
+                subject: this.buildSubject(eventType, payload),
+                html: this.buildHtmlBody(eventType, payload, recipient),
+                text: this.buildTextBody(eventType, payload, recipient)
+            };
 
-        const result = await this.smtpDriver.send(message);
+            const result = await this.smtpDriver.send(message);
 
-        return {
-            channel: this.getChannelName(),  // ← Récupère depuis le décorateur
-            provider: this.getProviderName(),
-            status: 'sent',
-            sentAt: new Date(),
-            attempts: context.attempt,
-            metadata: {
+            // Utilise la méthode héritée pour créer le résultat
+            return this.createSentResult(context, {
                 messageId: result.messageId,
-                recipientId: recipient.id
-            }
-        };
+                recipientId: recipient.id,
+                accepted: result.accepted,
+                rejected: result.rejected
+            });
+
+        } catch (error) {
+            // Utilise la méthode héritée pour créer le résultat d'erreur
+            return this.createFailedResult(context, error.message, {
+                recipientId: recipient.id,
+                address
+            });
+        }
     }
 
     private buildSubject(eventType: string, payload: any): string {
@@ -542,7 +570,15 @@ export class EmailProvider implements NotificationProvider {
         }
     }
 
-    // ... autres méthodes
+    async healthCheck(): Promise<boolean> {
+        return await this.smtpDriver.healthCheck();
+    }
+
+    validateConfig(_config: any): boolean | string[] {
+        return true;
+    }
+
+    // Les méthodes getChannelName() et getProviderName() sont automatiquement héritées !
 }
 ```
 

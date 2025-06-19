@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import {
-    NotificationProvider,
+    BaseNotificationProvider,
     SmtpDriver,
     SmtpDriverConfig,
     EmailMessage,
@@ -10,7 +10,6 @@ import {
     NotificationContext,
     InjectableNotifier
 } from '@afidos/nestjs-event-notifications';
-import { getNotifierMetadata } from '@afidos/nestjs-event-notifications';
 
 // Extension de l'interface Recipient pour ajouter le support email
 declare module '@afidos/nestjs-event-notifications' {
@@ -30,17 +29,16 @@ declare module '@afidos/nestjs-event-notifications' {
     description: 'Provider pour notifications email via SMTP'
 })
 @Injectable()
-export class EmailProvider implements NotificationProvider {
-    readonly name = 'EmailProvider';
-    readonly channel = 'email';
-    protected readonly property = 'email';
+export class EmailProvider extends BaseNotificationProvider {
     private readonly logger = new Logger(EmailProvider.name);
 
     constructor(
-        private readonly recipientLoader: RecipientLoader,
+        recipientLoader: RecipientLoader,
         private readonly smtpDriver: SmtpDriver,
         private readonly fromEmail: string = 'noreply@example.com'
-    ) {}
+    ) {
+        super(recipientLoader);
+    }
 
     async send(payload: any, context: NotificationContext): Promise<NotificationResult> {
         try {
@@ -51,14 +49,7 @@ export class EmailProvider implements NotificationProvider {
             const emailRecipients = this.filterRecipientsByProperty(allRecipients, 'email');
 
             if (emailRecipients.length === 0) {
-                return {
-                    channel: this.getChannelName(),
-                    provider: this.getProviderName(),
-                    status: 'skipped',
-                    sentAt: new Date(),
-                    attempts: context.attempt,
-                    metadata: { reason: 'No email recipients found' }
-                };
+                return this.createSkippedResult(context, 'No email recipients found');
             }
 
             // 3. Prendre le premier recipient
@@ -68,14 +59,7 @@ export class EmailProvider implements NotificationProvider {
             return await this.sendToAddress(address, context.eventType, payload, recipient, context);
 
         } catch (error) {
-            return {
-                channel: this.getChannelName(),
-                provider: this.getProviderName(),
-                status: 'failed',
-                error: `Failed to send: ${error.message}`,
-                sentAt: new Date(),
-                attempts: context.attempt
-            };
+            return this.createFailedResult(context, `Failed to send: ${error.message}`);
         }
     }
 
@@ -102,68 +86,25 @@ export class EmailProvider implements NotificationProvider {
 
             this.logger.log(`Email sent successfully to ${address} for event ${eventType}`);
 
-            return {
-                channel: this.getChannelName(),
-                provider: this.getProviderName(),
-                status: 'sent',
-                sentAt: new Date(),
-                attempts: context.attempt,
-                metadata: {
-                    messageId: result.messageId,
-                    recipientId: recipient.id,
-                    duration,
-                    accepted: result.accepted,
-                    rejected: result.rejected
-                }
-            };
+            return this.createSentResult(context, {
+                messageId: result.messageId,
+                recipientId: recipient.id,
+                duration,
+                accepted: result.accepted,
+                rejected: result.rejected
+            });
 
         } catch (error) {
             const duration = Date.now() - startTime;
 
             this.logger.error(`Failed to send email to ${address} for event ${eventType}: ${error.message}`);
 
-            return {
-                channel: this.getChannelName(),
-                provider: this.getProviderName(),
-                status: 'failed',
-                error: error.message,
-                sentAt: new Date(),
-                attempts: context.attempt,
-                metadata: {
-                    recipientId: recipient.id,
-                    duration,
-                    address
-                }
-            };
+            return this.createFailedResult(context, error.message, {
+                recipientId: recipient.id,
+                duration,
+                address
+            });
         }
-    }
-
-    /**
-     * Filtre les recipients qui ont une adresse pour une propriété donnée
-     */
-    private filterRecipientsByProperty<K extends keyof Recipient>(
-        recipients: Recipient[],
-        property: K
-    ): Recipient[] {
-        return recipients.filter(recipient => {
-            const address = recipient[property];
-            return address !== undefined && address !== null && address !== '';
-        });
-    }
-
-    /**
-     * Retourne le nom du provider pour les logs et métadonnées
-     */
-    private getProviderName(): string {
-        return this.constructor.name;
-    }
-
-    /**
-     * Récupère le nom du canal depuis les métadonnées du décorateur @InjectableNotifier
-     */
-    private getChannelName(): string {
-        const metadata = getNotifierMetadata(this.constructor);
-        return metadata?.channel || 'unknown';
     }
 
     /**

@@ -18,6 +18,7 @@ export interface HttpRequest {
     method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
     body?: any;
     headers?: Record<string, string>;
+    timeout?: number
 }
 
 export interface HttpResponse {
@@ -99,7 +100,7 @@ export class HttpDriver {
             url,
             method: 'POST',
             body,
-            headers
+            headers,
         });
     }
 

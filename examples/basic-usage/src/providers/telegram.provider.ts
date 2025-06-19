@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import {
-    NotificationProvider,
+    BaseNotificationProvider,
     HttpDriver,
     RecipientLoader,
     Recipient,
@@ -8,7 +8,6 @@ import {
     NotificationContext,
     InjectableNotifier
 } from '@afidos/nestjs-event-notifications';
-import { getNotifierMetadata } from '@afidos/nestjs-event-notifications';
 
 // Extension de l'interface Recipient pour ajouter le support Telegram
 declare module '@afidos/nestjs-event-notifications' {
@@ -33,18 +32,16 @@ export interface TelegramConfig {
     description: 'Provider pour notifications Telegram via HTTP API'
 })
 @Injectable()
-export class TelegramProvider implements NotificationProvider {
-    readonly name = 'TelegramProvider';
-    readonly channel = 'telegram';
-    protected readonly property = 'telegramId';
+export class TelegramProvider extends BaseNotificationProvider {
     private readonly logger = new Logger(TelegramProvider.name);
     private readonly apiUrl: string;
 
     constructor(
-        private readonly recipientLoader: RecipientLoader,
+        recipientLoader: RecipientLoader,
         private readonly httpDriver: HttpDriver,
         private readonly config: TelegramConfig
     ) {
+        super(recipientLoader);
         this.apiUrl = `https://api.telegram.org/bot${this.config.botToken}`;
     }
 
@@ -57,14 +54,7 @@ export class TelegramProvider implements NotificationProvider {
             const telegramRecipients = this.filterRecipientsByProperty(allRecipients, 'telegramId');
 
             if (telegramRecipients.length === 0) {
-                return {
-                    channel: this.getChannelName(),
-                    provider: this.getProviderName(),
-                    status: 'skipped',
-                    sentAt: new Date(),
-                    attempts: context.attempt,
-                    metadata: { reason: 'No telegram recipients found' }
-                };
+                return this.createSkippedResult(context, 'No telegram recipients found');
             }
 
             // 3. Prendre le premier recipient
@@ -74,14 +64,7 @@ export class TelegramProvider implements NotificationProvider {
             return await this.sendToAddress(address, context.eventType, payload, recipient, context);
 
         } catch (error) {
-            return {
-                channel: this.getChannelName(),
-                provider: this.getProviderName(),
-                status: 'failed',
-                error: `Failed to send: ${error.message}`,
-                sentAt: new Date(),
-                attempts: context.attempt
-            };
+            return this.createFailedResult(context, `Failed to send: ${error.message}`);
         }
     }
 
@@ -109,20 +92,13 @@ export class TelegramProvider implements NotificationProvider {
             if (response.status === 200 && response.data.ok) {
                 this.logger.log(`Telegram message sent successfully to ${address} for event ${eventType}`);
 
-                return {
-                    channel: this.getChannelName(),
-                    provider: this.getProviderName(),
-                    status: 'sent',
-                    sentAt: new Date(),
-                    attempts: context.attempt,
-                    metadata: {
-                        messageId: response.data.result.message_id,
-                        recipientId: recipient.id,
-                        chatId: address,
-                        duration,
-                        telegramResponse: response.data.result
-                    }
-                };
+                return this.createSentResult(context, {
+                    messageId: response.data.result.message_id,
+                    recipientId: recipient.id,
+                    chatId: address,
+                    duration,
+                    telegramResponse: response.data.result
+                });
             } else {
                 throw new Error(`Telegram API error: ${response.data.description || 'Unknown error'}`);
             }
@@ -132,48 +108,12 @@ export class TelegramProvider implements NotificationProvider {
 
             this.logger.error(`Failed to send Telegram message to ${address} for event ${eventType}: ${error.message}`);
 
-            return {
-                channel: this.getChannelName(),
-                provider: this.getProviderName(),
-                status: 'failed',
-                error: error.message,
-                sentAt: new Date(),
-                attempts: context.attempt,
-                metadata: {
-                    recipientId: recipient.id,
-                    chatId: address,
-                    duration
-                }
-            };
+            return this.createFailedResult(context, error.message, {
+                recipientId: recipient.id,
+                chatId: address,
+                duration
+            });
         }
-    }
-
-    /**
-     * Filtre les recipients qui ont une adresse pour une propriété donnée
-     */
-    private filterRecipientsByProperty<K extends keyof Recipient>(
-        recipients: Recipient[],
-        property: K
-    ): Recipient[] {
-        return recipients.filter(recipient => {
-            const address = recipient[property];
-            return address !== undefined && address !== null && address !== '';
-        });
-    }
-
-    /**
-     * Retourne le nom du provider pour les logs et métadonnées
-     */
-    private getProviderName(): string {
-        return this.constructor.name;
-    }
-
-    /**
-     * Récupère le nom du canal depuis les métadonnées du décorateur @InjectableNotifier
-     */
-    private getChannelName(): string {
-        const metadata = getNotifierMetadata(this.constructor);
-        return metadata?.channel || 'unknown';
     }
 
     /**

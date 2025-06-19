@@ -292,12 +292,6 @@ export interface EventEmissionResult {
  * Interface pour les providers de notification
  */
 export interface NotificationProvider {
-    /** Nom du provider */
-    readonly name: string;
-
-    /** Canal supporté */
-    readonly channel: NotificationChannel;
-
     /** Envoyer une notification */
     send(payload: any, context: NotificationContext): Promise<NotificationResult>;
 

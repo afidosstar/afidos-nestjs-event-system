@@ -467,7 +467,7 @@ export class AppModule {}
 
 ```typescript
 // providers/email.provider.ts
-import { Injectable, Logger } from '@nestjs/common';
+import { Logger } from '@nestjs/common';
 import {
     BaseNotificationProvider,  // ← Classe de base avec méthodes communes
     SmtpDriver,
@@ -492,8 +492,7 @@ declare module '@afidos/nestjs-event-notifications' {
     channel: 'email',        // ← Identifiant pour discovery
     driver: 'smtp',          // ← Driver utilisé
     description: 'Provider pour notifications email via SMTP'
-})
-@Injectable()
+})  // ← @InjectableNotifier applique automatiquement @Injectable()
 export class EmailProvider extends BaseNotificationProvider {  // ← Hérite de BaseNotificationProvider
 
     constructor(

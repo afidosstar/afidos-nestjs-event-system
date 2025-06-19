@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Logger } from '@nestjs/common';
 import { 
     BaseNotificationProvider, 
     HttpDriver, 
@@ -31,7 +31,6 @@ export interface WebhookConfig {
     driver: 'http',
     description: 'Provider pour notifications webhook via HTTP'
 })
-@Injectable()
 export class WebhookProvider extends BaseNotificationProvider {
     private readonly logger = new Logger(WebhookProvider.name);
 

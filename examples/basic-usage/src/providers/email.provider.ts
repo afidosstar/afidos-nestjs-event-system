@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Logger } from '@nestjs/common';
 import {
     BaseNotificationProvider,
     SmtpDriver,
@@ -28,7 +28,6 @@ declare module '@afidos/nestjs-event-notifications' {
     driver: 'smtp',
     description: 'Provider pour notifications email via SMTP'
 })
-@Injectable()
 export class EmailProvider extends BaseNotificationProvider {
     private readonly logger = new Logger(EmailProvider.name);
 

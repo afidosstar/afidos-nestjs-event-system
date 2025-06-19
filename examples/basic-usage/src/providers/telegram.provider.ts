@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Logger } from '@nestjs/common';
 import {
     BaseNotificationProvider,
     HttpDriver,
@@ -31,7 +31,6 @@ export interface TelegramConfig {
     driver: 'http',
     description: 'Provider pour notifications Telegram via HTTP API'
 })
-@Injectable()
 export class TelegramProvider extends BaseNotificationProvider {
     private readonly logger = new Logger(TelegramProvider.name);
     private readonly apiUrl: string;

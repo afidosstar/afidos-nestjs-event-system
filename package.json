@@ -1,6 +1,6 @@
 {
     "name": "@afidos/nestjs-event-notifications",
-    "version": "2.1.3",
+    "version": "2.1.4",
     "description": "Enterprise-grade event and notification system for NestJS applications",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",

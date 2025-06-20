@@ -2,7 +2,7 @@
 // EXPORTS PRINCIPAUX DU PACKAGE
 // ================================
 
-import {EventPayloads, EventTypesConfig, PackageConfig } from './types/interfaces';
+import {EventPayloads, EventTypesConfig, PackageConfig, EventTypeConfig } from './types/interfaces';
 
 // Module principal
 export { EventNotificationsModule } from './module/event-notifications.module';
@@ -50,6 +50,7 @@ export type { NotifierMetadata } from './decorators/injectable-notifier.decorato
 
 // Types et interfaces publiques
 export {
+    EventTypeConfig,
     // Types de base
     EventPayloads,
     NotificationChannel,

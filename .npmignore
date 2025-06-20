@@ -1,0 +1,58 @@
+# Development files
+src/
+*.ts
+!*.d.ts
+tsconfig*.json
+jest.config.js
+
+# IDE files
+.idea/
+.vscode/
+.claude/
+
+# Build tools
+.eslintrc.js
+.prettierrc
+
+# Examples and documentation
+examples/
+docs/
+ARCHITECTURE.md
+CLAUDE.md
+
+# Scripts
+scripts/
+
+# Development dependencies
+node_modules/
+coverage/
+.nyc_output/
+
+# Tests
+test/
+tests/
+**/*.spec.ts
+**/*.test.ts
+
+# Git
+.git/
+.gitignore
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+tmp/
+temp/

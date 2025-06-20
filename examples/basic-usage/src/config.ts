@@ -7,6 +7,13 @@ import * as dotenv from 'dotenv'
 
 dotenv.config();
 
+// Extension de l'interface EventTypeConfig pour ajouter le champ subject
+declare module '@afidos/nestjs-event-notifications' {
+    interface EventTypeConfig {
+        subject?: string;
+    }
+}
+
 // 1. Définir les types d'événements de l'application
 export interface MyAppEvents extends EventPayloads {
     'user.created': {
@@ -54,10 +61,11 @@ export interface MyAppEvents extends EventPayloads {
     };
 }
 
-// 2. Configuration des types d'événements
+// 2. Configuration des types d'événements avec sujets (utilisation de as any pour subject)
 export const eventTypesConfig = createEventTypeConfig<MyAppEvents>({
     'user.created': {
         description: 'Nouvel utilisateur créé',
+        subject: '🎉 Bienvenue dans notre communauté !',
         channels: ['email', 'telegram', 'webhook'],
         defaultProcessing: 'async',
         waitForResult: false,
@@ -66,6 +74,7 @@ export const eventTypesConfig = createEventTypeConfig<MyAppEvents>({
     },
     'user.updated': {
         description: 'Utilisateur mis à jour',
+        subject: '✅ Votre profil a été mis à jour',
         channels: ['email'],
         defaultProcessing: 'async',
         waitForResult: false,
@@ -74,6 +83,7 @@ export const eventTypesConfig = createEventTypeConfig<MyAppEvents>({
     },
     'order.created': {
         description: 'Nouvelle commande créée',
+        subject: '📦 Confirmation de votre commande',
         channels: ['email', 'telegram', 'webhook'],
         defaultProcessing: 'async',
         waitForResult: false,
@@ -82,6 +92,7 @@ export const eventTypesConfig = createEventTypeConfig<MyAppEvents>({
     },
     'order.shipped': {
         description: 'Commande expédiée',
+        subject: '🚚 Votre commande est en route !',
         channels: ['email', 'telegram'],
         defaultProcessing: 'async',
         waitForResult: false,
@@ -90,6 +101,7 @@ export const eventTypesConfig = createEventTypeConfig<MyAppEvents>({
     },
     'order.delivered': {
         description: 'Commande livrée',
+        subject: '✅ Votre commande a été livrée !',
         channels: ['email'],
         defaultProcessing: 'async',
         waitForResult: false,
@@ -98,22 +110,23 @@ export const eventTypesConfig = createEventTypeConfig<MyAppEvents>({
     },
     'system.error': {
         description: 'Erreur système',
+        subject: '🚨 Alerte système - Action requise',
         channels: ['email', 'telegram', 'webhook'],
-        defaultProcessing: 'sync',
-        waitForResult: true,
+        defaultProcessing: 'async',
+        waitForResult: false,
         priority: 'high',
-        retryAttempts: 5,
-        timeout: 5000
+        retryAttempts: 5
     },
     'system.maintenance': {
         description: 'Maintenance programmée',
+        subject: '🔧 Maintenance programmée du système',
         channels: ['email', 'telegram'],
         defaultProcessing: 'async',
         waitForResult: false,
         retryAttempts: 1,
         priority: 'normal'
     }
-});
+} as any);
 
 // 3. Configuration complète du package
 export const packageConfig = createPackageConfig<MyAppEvents>({

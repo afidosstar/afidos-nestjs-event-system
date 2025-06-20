@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>{{subject}}</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #6c757d 0%, #495057 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+        .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+        .event-info { background: white; padding: 20px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #6c757d; }
+        .payload { background: #f8f9fa; padding: 15px; border-radius: 5px; font-family: monospace; white-space: pre-wrap; }
+        .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📧 Notification</h1>
+        </div>
+        <div class="content">
+            <p>Bonjour {{recipientName}},</p>
+            <p>Vous avez reçu une nouvelle notification.</p>
+            
+            <div class="event-info">
+                <h3>Détails de l'événement</h3>
+                <p><strong>Type :</strong> {{eventType}}</p>
+                <p><strong>Date :</strong> {{formatDate timestamp}}</p>
+                {{#if payload}}
+                <p><strong>Données :</strong></p>
+                <div class="payload">{{formatJson payload}}</div>
+                {{/if}}
+            </div>
+        </div>
+        <div class="footer">
+            <p>Notification automatique</p>
+            <p><small>Cet email a été envoyé automatiquement, merci de ne pas y répondre.</small></p>
+        </div>
+    </div>
+</body>
+</html>

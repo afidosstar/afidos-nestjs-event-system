@@ -5,9 +5,10 @@ import {
 } from '@afidos/nestjs-event-notifications';
 
 // Providers
-import { EmailProvider } from './providers/email.provider';
-import { TelegramProvider } from './providers/telegram.provider';
-import { WebhookProvider } from './providers/webhook.provider';
+import { EmailProvider } from './notifications/providers/email-provider/email.provider';
+import { CustomMailerModule } from './notifications/providers/email-provider/mailer.module';
+import { TelegramProvider } from './notifications/providers/telegram.provider';
+import { WebhookProvider } from './notifications/providers/webhook.provider';
 
 // Loaders
 import { StaticRecipientLoader } from './loaders/static-recipient.loader';
@@ -18,6 +19,7 @@ import { packageConfig, MyAppEvents } from './config';
 // Entités (pour accès aux données si nécessaire)
 import { User } from './user/user.entity';
 import { Order } from './order/order.entity';
+import { EventType } from './entities/event-type.entity';
 
 /**
  * Module dédié au worker pour traitement asynchrone des notifications
@@ -29,13 +31,16 @@ import { Order } from './order/order.entity';
         TypeOrmModule.forRoot({
             type: 'sqlite',
             database: 'db.sqlite',
-            entities: [User, Order],
+            entities: [User, Order, EventType],
             synchronize: process.env.NODE_ENV !== 'production',
             logging: process.env.NODE_ENV === 'development'
         }),
 
         // Configuration des entités utilisées
-        TypeOrmModule.forFeature([User, Order]),
+        TypeOrmModule.forFeature([User, Order, EventType]),
+        
+        // Configuration du mailer pour l'email provider
+        CustomMailerModule,
 
         // Module des notifications en mode worker
         EventNotificationsModule.forRoot<MyAppEvents>({

@@ -1,16 +1,19 @@
 import { NotificationProvider, NotificationResult, NotificationContext } from '../types/interfaces';
 import { Recipient, RecipientLoader } from '../loaders/recipient-loader.interface';
 import { getNotifierMetadata } from '../decorators/injectable-notifier.decorator';
-
 /**
  * Classe de base pour les providers de notification
  * Implémente les méthodes communes getChannelName() et getProviderName()
  * et fournit des utilitaires pour filtrer les destinataires
  */
-export abstract class BaseNotificationProvider implements NotificationProvider {
+export abstract class BaseNotificationProvider<Channel extends string> implements NotificationProvider {
+
     constructor(
         protected readonly recipientLoader: RecipientLoader
     ) {}
+
+
+
 
     /**
      * Méthode abstraite à implémenter par chaque provider

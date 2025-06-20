@@ -2,8 +2,6 @@ import { DynamicModule, Module, forwardRef } from '@nestjs/common';
 import {
     EventPayloads,
     PackageConfig,
-    NotificationProviderConfig,
-    QueueConfig
 } from '../types/interfaces';
 
 // Services
@@ -13,8 +11,6 @@ import { QueueManagerService } from '../services/queue-manager.service';
 import { HandlerQueueManagerService } from '../services/handler-queue-manager.service';
 import { EventHandlerManagerService } from '../services/event-handler-manager.service';
 
-// Modules
-import { DriversModule } from './drivers.module';
 
 /**
  * Configuration tokens pour l'injection de dépendances
@@ -35,17 +31,8 @@ export class EventNotificationsModule {
     static forRoot<T extends EventPayloads = EventPayloads>(
         config: PackageConfig<T>
     ): DynamicModule {
-        // Valider la configuration des drivers
-        const driverValidation = DriversModule.validateDriversConfig(config);
-        if (!driverValidation.valid) {
-            throw new Error(`Invalid drivers configuration: ${driverValidation.errors.join(', ')}`);
-        }
-
         return {
             module: EventNotificationsModule,
-            imports: [
-                DriversModule.forRoot(config)
-            ],
             providers: [
                 {
                     provide: EVENT_NOTIFICATIONS_CONFIG,
@@ -54,10 +41,6 @@ export class EventNotificationsModule {
                 {
                     provide: EVENT_TYPES_CONFIG,
                     useValue: config.eventTypes,
-                },
-                {
-                    provide: PROVIDERS_CONFIG,
-                    useValue: config.providers || {},
                 },
                 {
                     provide: NotificationOrchestratorService,
@@ -87,8 +70,7 @@ export class EventNotificationsModule {
                 HandlerQueueManagerService,
                 EventHandlerManagerService,
                 EVENT_NOTIFICATIONS_CONFIG,
-                EVENT_TYPES_CONFIG,
-                PROVIDERS_CONFIG
+                EVENT_TYPES_CONFIG
             ],
             global: true
         };
@@ -103,12 +85,6 @@ export class EventNotificationsModule {
     }): DynamicModule {
         return {
             module: EventNotificationsModule,
-            imports: [
-                DriversModule.forRootAsync({
-                    useFactory: options.useFactory,
-                    inject: options.inject || []
-                })
-            ],
             providers: [
                 {
                     provide: EVENT_NOTIFICATIONS_CONFIG,
@@ -120,14 +96,6 @@ export class EventNotificationsModule {
                     useFactory: async (...args: any[]) => {
                         const config = await options.useFactory(...args);
                         return config.eventTypes;
-                    },
-                    inject: options.inject || [],
-                },
-                {
-                    provide: PROVIDERS_CONFIG,
-                    useFactory: async (...args: any[]) => {
-                        const config = await options.useFactory(...args);
-                        return config.providers || {};
                     },
                     inject: options.inject || [],
                 },
@@ -160,7 +128,6 @@ export class EventNotificationsModule {
                 EventHandlerManagerService,
                 EVENT_NOTIFICATIONS_CONFIG,
                 EVENT_TYPES_CONFIG,
-                PROVIDERS_CONFIG
             ],
             global: true
         };
@@ -172,17 +139,9 @@ export class EventNotificationsModule {
     static forWorker<T extends EventPayloads = EventPayloads>(
         config: PackageConfig<T>
     ): DynamicModule {
-        // Valider la configuration des drivers
-        const driverValidation = DriversModule.validateDriversConfig(config);
-        if (!driverValidation.valid) {
-            throw new Error(`Invalid drivers configuration: ${driverValidation.errors.join(', ')}`);
-        }
 
         return {
             module: EventNotificationsModule,
-            imports: [
-                DriversModule.forWorker(config)
-            ],
             providers: [
                 {
                     provide: EVENT_NOTIFICATIONS_CONFIG,
@@ -191,10 +150,6 @@ export class EventNotificationsModule {
                 {
                     provide: EVENT_TYPES_CONFIG,
                     useValue: config.eventTypes,
-                },
-                {
-                    provide: PROVIDERS_CONFIG,
-                    useValue: config.providers || {},
                 },
                 EventEmitterService,
                 NotificationOrchestratorService,
@@ -210,7 +165,6 @@ export class EventNotificationsModule {
                 EventHandlerManagerService,
                 EVENT_NOTIFICATIONS_CONFIG,
                 EVENT_TYPES_CONFIG,
-                PROVIDERS_CONFIG
             ],
             global: true
         };
@@ -222,17 +176,9 @@ export class EventNotificationsModule {
     static forApi<T extends EventPayloads = EventPayloads>(
         config: PackageConfig<T>
     ): DynamicModule {
-        // Valider la configuration des drivers
-        const driverValidation = DriversModule.validateDriversConfig(config);
-        if (!driverValidation.valid) {
-            throw new Error(`Invalid drivers configuration: ${driverValidation.errors.join(', ')}`);
-        }
 
         return {
             module: EventNotificationsModule,
-            imports: [
-                DriversModule.forApi(config)
-            ],
             providers: [
                 {
                     provide: EVENT_NOTIFICATIONS_CONFIG,
@@ -241,10 +187,6 @@ export class EventNotificationsModule {
                 {
                     provide: EVENT_TYPES_CONFIG,
                     useValue: config.eventTypes,
-                },
-                {
-                    provide: PROVIDERS_CONFIG,
-                    useValue: config.providers || {},
                 },
                 EventEmitterService,
                 NotificationOrchestratorService,
@@ -256,7 +198,6 @@ export class EventNotificationsModule {
                 EventHandlerManagerService,
                 EVENT_NOTIFICATIONS_CONFIG,
                 EVENT_TYPES_CONFIG,
-                PROVIDERS_CONFIG
             ],
             global: true
         };
@@ -271,9 +212,6 @@ export class EventNotificationsModule {
     }): DynamicModule {
         return {
             module: EventNotificationsModule,
-            imports: [
-                DriversModule.forWorkerAsync(options)
-            ],
             providers: [
                 {
                     provide: EVENT_NOTIFICATIONS_CONFIG,
@@ -285,14 +223,6 @@ export class EventNotificationsModule {
                     useFactory: async (...args: any[]) => {
                         const config = await options.useFactory(...args);
                         return config.eventTypes;
-                    },
-                    inject: options.inject || [],
-                },
-                {
-                    provide: PROVIDERS_CONFIG,
-                    useFactory: async (...args: any[]) => {
-                        const config = await options.useFactory(...args);
-                        return config.providers || {};
                     },
                     inject: options.inject || [],
                 },
@@ -310,7 +240,6 @@ export class EventNotificationsModule {
                 EventHandlerManagerService,
                 EVENT_NOTIFICATIONS_CONFIG,
                 EVENT_TYPES_CONFIG,
-                PROVIDERS_CONFIG
             ],
             global: true
         };
@@ -325,9 +254,6 @@ export class EventNotificationsModule {
     }): DynamicModule {
         return {
             module: EventNotificationsModule,
-            imports: [
-                DriversModule.forApiAsync(options)
-            ],
             providers: [
                 {
                     provide: EVENT_NOTIFICATIONS_CONFIG,
@@ -342,14 +268,6 @@ export class EventNotificationsModule {
                     },
                     inject: options.inject || [],
                 },
-                {
-                    provide: PROVIDERS_CONFIG,
-                    useFactory: async (...args: any[]) => {
-                        const config = await options.useFactory(...args);
-                        return config.providers || {};
-                    },
-                    inject: options.inject || [],
-                },
                 EventEmitterService,
                 NotificationOrchestratorService,
                 EventHandlerManagerService,
@@ -360,7 +278,6 @@ export class EventNotificationsModule {
                 EventHandlerManagerService,
                 EVENT_NOTIFICATIONS_CONFIG,
                 EVENT_TYPES_CONFIG,
-                PROVIDERS_CONFIG
             ],
             global: true
         };

@@ -2,7 +2,7 @@
 // TYPES DE BASE ET INTERFACES PUBLIQUES
 // ================================
 
-import {HttpDriverConfig, SmtpDriverConfig} from "@/types/driver.types";
+
 
 /**
  * Interface de base que l'utilisateur étend pour définir ses types d'événements
@@ -78,44 +78,6 @@ export type EventTypesConfig<T extends EventPayloads = EventPayloads> = {
 // export type EventTypesConfig<T extends EventPayloads> =
 //     Record<keyof T, EventTypeConfig>;
 
-/**
- * Interface de base pour les configurations de drivers
- * Les drivers peuvent étendre cette interface via module augmentation
- */
-export interface DriverConfigurations {
-    // Les drivers spécifiques étendent cette interface
-    // Exemple d'usage dans le driver:
-    // declare module './interfaces' {
-    //   interface DriverConfigurations {
-    //     'smtp': SmtpDriverConfig;
-    //   }
-    // }
-}
-
-/**
- * Type pour les drivers disponibles
- * Utilise les clés de DriverConfigurations + string pour les drivers personnalisés
- */
-export type AvailableDrivers = keyof DriverConfigurations | string;
-
-/**
- * Configuration de base d'un provider de notification
- */
-export interface NotificationProviderConfig<T extends AvailableDrivers = AvailableDrivers> {
-    /** Driver du provider (smtp, http, ou driver personnalisé) */
-    driver: T;
-
-    /** Configuration spécifique au driver */
-    config: T extends keyof DriverConfigurations
-        ? DriverConfigurations[T]
-        : Record<string, any>;
-
-    /** Provider activé ou non */
-    enabled?: boolean;
-
-    /** Timeout pour ce provider (en ms) */
-    timeout?: number;
-}
 
 /**
  * Configuration de la queue Redis
@@ -152,36 +114,14 @@ export interface QueueConfig {
     };
 }
 
+
+
 /**
  * Configuration principale du package
  */
 export interface PackageConfig<T extends EventPayloads = EventPayloads> {
     /** Configuration des types d'événements */
     eventTypes: EventTypesConfig<T>;
-
-    /** Configuration des providers (optionnel avec auto-découverte) */
-    providers?: Record<string, NotificationProviderConfig>;
-
-    drivers?:{
-        http?: {
-            timeout?: number;
-            retries?: number;
-            headers?: Record<string, string>;
-        };
-        smtp?: {
-            host: string;
-            port: number;
-            secure?: boolean;
-            auth?: {
-                user: string;
-                pass: string;
-            };
-            pool?: boolean;
-            maxConnections?: number;
-            maxMessages?: number;
-            timeout?: number;
-        };
-    }
 
     /** Configuration de la queue (optionnel) */
     queue?: QueueConfig;
@@ -314,8 +254,11 @@ export interface EventEmissionResult {
  * Interface pour les providers de notification
  */
 export interface NotificationProvider {
+
+
     /** Envoyer une notification */
     send(payload: any, context: NotificationContext): Promise<NotificationResult>;
+
 
     /** Vérifier la santé du provider */
     healthCheck(): Promise<boolean>;

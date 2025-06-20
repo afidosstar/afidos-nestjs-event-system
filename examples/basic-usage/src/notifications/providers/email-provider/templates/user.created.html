@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Bienvenue !</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+        .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+        .button { display: inline-block; background: #667eea; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+        .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎉 Bienvenue {{{recipientName}}} !</h1>
+        </div>
+        <div class="content">
+            <p>Nous sommes ravis de vous accueillir dans notre communauté !</p>
+            <p><strong>Votre compte a été créé avec succès :</strong></p>
+            <ul>
+                <li><strong>Email :</strong> {{{payload.email}}}</li>
+                <li><strong>Date de création :</strong> {{{formatDate payload.createdAt}}}</li>
+            </ul>
+            <p>Vous pouvez maintenant vous connecter et profiter de nos services.</p>
+            <a href="{{{appUrl}}}/login" class="button">Se connecter</a>
+        </div>
+        <div class="footer">
+            <p>Merci de nous avoir fait confiance !</p>
+            <p><small>Cet email a été envoyé automatiquement, merci de ne pas y répondre.</small></p>
+        </div>
+    </div>
+</body>
+</html>

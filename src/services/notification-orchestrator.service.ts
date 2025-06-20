@@ -7,8 +7,9 @@ import {
     NotificationProvider
 } from '../types/interfaces';
 import { RecipientLoader } from '../loaders/recipient-loader.interface';
-import { NotifierRegistry } from '../decorators/injectable-notifier.decorator';
+import {getNotifierMetadata, NotifierRegistry} from '../decorators/injectable-notifier.decorator';
 import { EVENT_TYPES_CONFIG } from '../module/event-notifications.module';
+import {BaseNotificationProvider} from "../providers/base-notification-provider";
 
 /**
  * Service d'orchestration des notifications

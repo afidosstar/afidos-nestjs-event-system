@@ -7,7 +7,7 @@ import {
     NotificationContext,
     InjectableNotifier
 } from '@afidos/nestjs-event-notifications';
-import { StaticRecipientLoader } from '../loaders/static-recipient.loader';
+import { StaticRecipientLoader } from '../../loaders/static-recipient.loader';
 import axios, { AxiosResponse } from 'axios';
 
 // Extension de l'interface Recipient pour ajouter le support Telegram

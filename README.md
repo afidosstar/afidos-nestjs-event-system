@@ -241,7 +241,7 @@ import { eventTypesConfig } from './config';
 
 @Module({
     imports: [
-        EventNotificationsModule.forRoot(packageConfig)  // ← Configuration simplifiée
+        EventNotificationsModule.forRoot<MyAppEvents>(packageConfig)  // ← Configuration simplifiée
     ],
     providers: [
         // Drivers
@@ -441,7 +441,7 @@ export class AuditLogHandler implements EventHandler {
 // app.module.ts
 @Module({
     imports: [
-        EventNotificationsModule.forRoot(packageConfig)
+        EventNotificationsModule.forRoot<MyAppEvents>(packageConfig)
     ],
     providers: [
         // Drivers

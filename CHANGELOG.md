@@ -5,6 +5,106 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/),
 et ce projet adhère au [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2025-06-19
+
+### 💥 BREAKING CHANGES - Suppression complète de la notion de drivers
+
+#### Architecture simplifiée
+- **Suppression complète des drivers** : Plus de SmtpDriver, HttpDriver, DriversModule
+- **Providers autonomes** : Chaque provider implémente directement sa logique de transport
+- **Configuration simplifiée** : Suppression de la section `drivers` dans PackageConfig
+- **Plus de dépendances abstraites** : Les providers utilisent directement les bibliothèques (nodemailer, axios, etc.)
+
+#### Changements dans les providers
+- **BaseNotificationProvider** : Générique simplifié `<Channel extends string>` au lieu de `<Driver>`
+- **@InjectableNotifier** : Suppression de la propriété `driver` obligatoire
+- **Méthode setDriver()** : Supprimée de l'interface NotificationProvider
+- **Implémentation directe** : Les providers gèrent leur propre logique de transport
+
+#### Configuration et modules
+- **DriversModule** : Complètement supprimé
+- **filterProvidersByDrivers()** : Fonction supprimée
+- **Configuration drivers** : Section `drivers` supprimée de PackageConfig
+- **Imports simplifiés** : Plus d'imports de drivers dans index.ts
+
+#### Migration vers v2.0.0
+
+##### 1. Mettre à jour les providers
+```typescript
+// Avant v2.0.0
+@InjectableNotifier({
+    channel: 'email',
+    driver: 'smtp',  // ← À supprimer
+    description: 'Provider email'
+})
+export class EmailProvider extends BaseNotificationProvider<SmtpDriver> {
+    constructor(
+        recipientLoader: RecipientLoader,
+        private readonly smtpDriver: SmtpDriver  // ← À supprimer
+    ) {
+        super(recipientLoader);
+    }
+}
+
+// v2.0.0
+@InjectableNotifier({
+    channel: 'email',
+    description: 'Provider email'
+})
+export class EmailProvider extends BaseNotificationProvider<'email'> {
+    private readonly transporter: Transporter;
+
+    constructor(recipientLoader: RecipientLoader) {
+        super(recipientLoader);
+        this.transporter = createTransport({
+            // Configuration SMTP directe
+        });
+    }
+}
+```
+
+##### 2. Simplifier la configuration
+```typescript
+// Avant v2.0.0
+export const packageConfig = createPackageConfig({
+    eventTypes: {...},
+    drivers: {  // ← Section à supprimer
+        smtp: { host: '...', port: 587 },
+        http: { timeout: 30000 }
+    },
+    queue: {...}
+});
+
+// v2.0.0
+export const packageConfig = createPackageConfig({
+    eventTypes: {...},
+    queue: {...}  // Plus de section drivers
+});
+```
+
+##### 3. Mettre à jour les modules
+```typescript
+// Avant v2.0.0
+providers: [
+    ...filterProvidersByDrivers([EmailProvider], packageConfig)  // ← À supprimer
+]
+
+// v2.0.0
+providers: [
+    EmailProvider,  // Import direct
+    TelegramProvider,
+    WebhookProvider
+]
+```
+
+#### Avantages de v2.0.0
+- **Simplicité** : Architecture plus simple sans couche d'abstraction
+- **Flexibilité** : Providers peuvent utiliser n'importe quelle bibliothèque
+- **Performance** : Moins d'overhead, injection directe
+- **Maintenance** : Code plus simple à maintenir et déboguer
+
+---
+
 ## [1.0.4] - 2025-06-19
 
 ### 🏗️ Améliorations Architecture et DriversModule

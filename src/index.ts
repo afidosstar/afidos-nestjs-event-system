@@ -2,12 +2,10 @@
 // EXPORTS PRINCIPAUX DU PACKAGE
 // ================================
 
-import {EventPayloads, EventTypesConfig, NotificationProviderConfig, PackageConfig } from './types/interfaces';
-import { DriversModule } from './module/drivers.module';
+import {EventPayloads, EventTypesConfig, PackageConfig } from './types/interfaces';
 
 // Module principal
 export { EventNotificationsModule } from './module/event-notifications.module';
-export { DriversModule } from './module/drivers.module';
 
 // Services
 export { EventEmitterService } from './services/event-emitter.service';
@@ -33,9 +31,6 @@ export {
     getHandlerMetadata
 } from './decorators/injectable-handler.decorator';
 
-// Drivers préconçus
-export { HttpDriver } from './drivers/http.driver';
-export { SmtpDriver } from './drivers/smtp.driver';
 
 // Loaders et interfaces étendues
 export { RecipientLoader, Recipient } from './loaders/recipient-loader.interface';
@@ -63,7 +58,6 @@ export {
 
     // Configuration
     EventTypesConfig,
-    NotificationProviderConfig,
     QueueConfig,
     PackageConfig,
     RetryPolicy,
@@ -83,14 +77,6 @@ export {
     SystemEvent
 } from './types/interfaces';
 
-// Types pour drivers
-export {
-    HttpRequest,
-    HttpResponse,
-    EmailMessage,
-    SmtpResponse,
-    SmtpDriverConfig
-} from './types/driver.types';
 
 // No default providers - providers are now in examples/basic-usage/src/providers
 
@@ -115,14 +101,6 @@ export function createEventTypeConfig<T extends EventPayloads>(
     return config;
 }
 
-/**
- * Helper pour créer une configuration de provider
- */
-export function createProviderConfig(
-    providers: Record<string, NotificationProviderConfig>
-): Record<string, NotificationProviderConfig> {
-    return providers;
-}
 
 /**
  * Helper pour créer une configuration complète du package
@@ -141,24 +119,4 @@ export function createPackageConfig<T extends EventPayloads>(
     return config;
 }
 
-/**
- * Helper pour filtrer les providers selon les drivers configurés
- * 
- * @example
- * ```typescript
- * // Au lieu d'importer tous les providers
- * providers: [EmailProvider, TelegramProvider, WebhookProvider]
- * 
- * // Filtrer selon les drivers disponibles
- * providers: [
- *     ...filterProvidersByDrivers([EmailProvider, TelegramProvider, WebhookProvider], packageConfig)
- * ]
- * ```
- */
-export function filterProvidersByDrivers<T extends EventPayloads>(
-    providers: any[],
-    config: PackageConfig<T>
-): any[] {
-    return DriversModule.filterProvidersByAvailableDrivers(providers, config);
-}
 

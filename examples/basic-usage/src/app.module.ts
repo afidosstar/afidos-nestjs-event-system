@@ -5,8 +5,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import {User} from "./user/user.entity";
 import {Order} from "./order/order.entity";
 import {
-  EventNotificationsModule,
-  filterProvidersByDrivers
+  EventNotificationsModule
 } from '@afidos/nestjs-event-notifications';
 import {MyAppEvents, packageConfig} from "./config";
 import {UserModule} from "./user/user.module";
@@ -45,8 +44,10 @@ import {AuditLogHandler} from "./handlers/audit-log.handler";
     UserAnalyticsHandler,
     AuditLogHandler,
 
-    // Notification Providers - Filtrés automatiquement selon les drivers configurés
-    ...filterProvidersByDrivers([EmailProvider, TelegramProvider, WebhookProvider], packageConfig)
+    // Notification Providers 
+    EmailProvider,
+    TelegramProvider,
+    WebhookProvider
   ]
 })
 export class AppModule {}

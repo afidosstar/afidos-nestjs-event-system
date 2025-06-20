@@ -1,7 +1,6 @@
 import { Logger } from '@nestjs/common';
 import {
     BaseNotificationProvider,
-    HttpDriver,
     RecipientLoader,
     Recipient,
     NotificationResult,
@@ -9,6 +8,7 @@ import {
     InjectableNotifier
 } from '@afidos/nestjs-event-notifications';
 import { StaticRecipientLoader } from '../loaders/static-recipient.loader';
+import axios, { AxiosResponse } from 'axios';
 
 // Extension de l'interface Recipient pour ajouter le support Telegram
 declare module '@afidos/nestjs-event-notifications' {
@@ -25,21 +25,22 @@ export interface TelegramConfig {
 }
 
 /**
- * Provider Telegram utilisant le HttpDriver préconçu
+ * Provider Telegram utilisant axios directement
  */
 @InjectableNotifier({
     channel: 'telegram',
-    driver: 'http',
     description: 'Provider pour notifications Telegram via HTTP API'
 })
-export class TelegramProvider extends BaseNotificationProvider {
+export class TelegramProvider extends BaseNotificationProvider<'telegram'> {
     private readonly logger = new Logger(TelegramProvider.name);
     private readonly apiUrl: string;
+    private readonly config: {
+        botToken: string;
+        parseMode: string;
+        timeout: number;
+    };
 
-    constructor(
-        recipientLoader: StaticRecipientLoader,
-        private readonly httpDriver: HttpDriver
-    ) {
+    constructor(recipientLoader: StaticRecipientLoader) {
         super(recipientLoader);
         this.config = {
             botToken: process.env.TELEGRAM_BOT_TOKEN || '123456:ABC-DEF',
@@ -48,8 +49,6 @@ export class TelegramProvider extends BaseNotificationProvider {
         };
         this.apiUrl = `https://api.telegram.org/bot${this.config.botToken}`;
     }
-
-    private readonly config: TelegramConfig;
 
     async send(payload: any, context: NotificationContext): Promise<NotificationResult> {
         try {
@@ -86,11 +85,13 @@ export class TelegramProvider extends BaseNotificationProvider {
         try {
             const message = this.buildTelegramMessage(eventType, payload, recipient);
 
-            const response = await this.httpDriver.post(`${this.apiUrl}/sendMessage`, {
+            const response = await axios.post(`${this.apiUrl}/sendMessage`, {
                 chat_id: address,
                 text: message,
                 parse_mode: this.config.parseMode || 'HTML',
                 disable_web_page_preview: true
+            }, {
+                timeout: this.config.timeout
             });
 
             const duration = Date.now() - startTime;
@@ -199,7 +200,9 @@ ${username ? `${username}\n` : ''}
      */
     async healthCheck(): Promise<boolean> {
         try {
-            const response = await this.httpDriver.get(`${this.apiUrl}/getMe`);
+            const response = await axios.get(`${this.apiUrl}/getMe`, {
+                timeout: this.config.timeout
+            });
             return response.status === 200 && response.data.ok;
         } catch (error) {
             this.logger.error(`Telegram provider health check failed: ${error.message}`);

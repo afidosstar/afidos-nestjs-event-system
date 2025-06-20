@@ -1,8 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { 
-    EventNotificationsModule,
-    filterProvidersByDrivers
+    EventNotificationsModule
 } from '@afidos/nestjs-event-notifications';
 
 // Providers
@@ -14,7 +13,7 @@ import { WebhookProvider } from './providers/webhook.provider';
 import { StaticRecipientLoader } from './loaders/static-recipient.loader';
 
 // Configuration
-import { packageConfig } from './config';
+import { packageConfig, MyAppEvents } from './config';
 
 // Entités (pour accès aux données si nécessaire)
 import { User } from './user/user.entity';
@@ -39,7 +38,7 @@ import { Order } from './order/order.entity';
         TypeOrmModule.forFeature([User, Order]),
 
         // Module des notifications en mode worker
-        EventNotificationsModule.forRoot({
+        EventNotificationsModule.forRoot<MyAppEvents>({
             ...packageConfig,
             mode: 'worker',  // ← Mode worker uniquement
             
@@ -64,8 +63,10 @@ import { Order } from './order/order.entity';
         // Recipient loader
         StaticRecipientLoader,
 
-        // Providers de notifications - Filtrés automatiquement selon les drivers configurés
-        ...filterProvidersByDrivers([EmailProvider, TelegramProvider, WebhookProvider], packageConfig)
+        // Providers de notifications
+        EmailProvider,
+        TelegramProvider,
+        WebhookProvider
     ]
 })
 export class WorkerModule {}

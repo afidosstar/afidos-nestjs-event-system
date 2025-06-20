@@ -1,9 +1,6 @@
-import { Logger, Inject } from '@nestjs/common';
+import { Logger } from '@nestjs/common';
 import {
     BaseNotificationProvider,
-    SmtpDriver,
-    SmtpDriverConfig,
-    EmailMessage,
     RecipientLoader,
     Recipient,
     NotificationResult,
@@ -11,6 +8,7 @@ import {
     InjectableNotifier
 } from '@afidos/nestjs-event-notifications';
 import { StaticRecipientLoader } from '../loaders/static-recipient.loader';
+import { createTransport, Transporter } from 'nodemailer';
 
 // Extension de l'interface Recipient pour ajouter le support email
 declare module '@afidos/nestjs-event-notifications' {
@@ -22,21 +20,29 @@ declare module '@afidos/nestjs-event-notifications' {
 }
 
 /**
- * Provider email utilisant le SmtpDriver préconçu
+ * Provider email utilisant nodemailer directement
  */
 @InjectableNotifier({
     channel: 'email',
-    driver: 'smtp',
     description: 'Provider pour notifications email via SMTP'
 })
-export class EmailProvider extends BaseNotificationProvider {
+export class EmailProvider extends BaseNotificationProvider<'email'> {
     private readonly logger = new Logger(EmailProvider.name);
+    private readonly transporter: Transporter;
 
-    constructor(
-        recipientLoader: StaticRecipientLoader,
-        private readonly smtpDriver: SmtpDriver
-    ) {
+    constructor(recipientLoader: StaticRecipientLoader) {
         super(recipientLoader);
+        
+        // Configuration SMTP depuis les variables d'environnement
+        this.transporter = createTransport({
+            host: process.env.SMTP_HOST || 'localhost',
+            port: parseInt(process.env.SMTP_PORT || '587'),
+            secure: process.env.SMTP_SECURE === 'true',
+            auth: {
+                user: process.env.SMTP_USER || '',
+                pass: process.env.SMTP_PASSWORD || '',
+            },
+        });
     }
 
     private readonly fromEmail = process.env.SMTP_FROM || 'noreply@example.com';
@@ -74,15 +80,15 @@ export class EmailProvider extends BaseNotificationProvider {
         const startTime = Date.now();
 
         try {
-            const message: EmailMessage = {
-                to: address,
+            const mailOptions = {
                 from: this.fromEmail,
+                to: address,
                 subject: this.buildSubject(eventType, payload),
                 html: this.buildHtmlBody(eventType, payload, recipient),
                 text: this.buildTextBody(eventType, payload, recipient)
             };
 
-            const result = await this.smtpDriver.send(message);
+            const result = await this.transporter.sendMail(mailOptions);
             const duration = Date.now() - startTime;
 
             this.logger.log(`Email sent successfully to ${address} for event ${eventType}`);
@@ -206,7 +212,9 @@ export class EmailProvider extends BaseNotificationProvider {
      */
     async healthCheck(): Promise<boolean> {
         try {
-            return await this.smtpDriver.healthCheck();
+            // Test simple de connexion SMTP
+            await this.transporter.verify();
+            return true;
         } catch (error) {
             this.logger.error(`Email provider health check failed: ${error.message}`);
             return false;

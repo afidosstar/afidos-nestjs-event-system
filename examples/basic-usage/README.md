@@ -397,7 +397,7 @@ npm run test:cov
 3. **Mode Worker-Only** : Configuration pour worker dédié
    ```typescript
    // worker.module.ts
-   EventNotificationsModule.forRoot({
+   EventNotificationsModule.forRoot<MyAppEvents>({
      mode: 'worker',  // ← Worker uniquement
      queue: { redis: {...} }
    })

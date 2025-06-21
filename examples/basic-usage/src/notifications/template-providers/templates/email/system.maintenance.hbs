@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maintenance programmée - {{companyName}}</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #ffc107; color: #212529; text-align: center; padding: 20px; border-radius: 8px 8px 0 0; }
+        .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px; }
+        .maintenance-info { background: white; padding: 20px; border-radius: 6px; margin: 20px 0; border-left: 4px solid #ffc107; }
+        .button { display: inline-block; background: #ffc107; color: #212529; padding: 12px 24px; text-decoration: none; border-radius: 4px; margin: 10px 0; }
+        .footer { text-align: center; font-size: 12px; color: #666; margin-top: 20px; }
+        .warning { background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 4px; margin: 15px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔧 Maintenance programmée</h1>
+        </div>
+        
+        <div class="content">
+            <p>Bonjour {{userName}},</p>
+            
+            <p>Nous vous informons qu'une <strong>maintenance programmée</strong> aura lieu sur nos services {{companyName}}.</p>
+            
+            <div class="maintenance-info">
+                <h3>Détails de la maintenance</h3>
+                <p><strong>Date :</strong> {{maintenanceDate}}</p>
+                {{#if startTime}}
+                <p><strong>Heure de début :</strong> {{startTime}}</p>
+                {{/if}}
+                {{#if duration}}
+                <p><strong>Durée estimée :</strong> {{duration}}</p>
+                {{/if}}
+                {{#if endTime}}
+                <p><strong>Fin prévue :</strong> {{endTime}}</p>
+                {{/if}}
+                {{#if reason}}
+                <p><strong>Raison :</strong> {{reason}}</p>
+                {{/if}}
+            </div>
+            
+            <div class="warning">
+                <strong>⚠️ Services impactés :</strong>
+                <p>Pendant cette période, certains de nos services pourront être temporairement indisponibles ou fonctionner de manière dégradée.</p>
+                {{#if affectedServices}}
+                <ul>
+                {{#each affectedServices}}
+                    <li>{{this}}</li>
+                {{/each}}
+                </ul>
+                {{/if}}
+            </div>
+            
+            <p>Nous mettons tout en œuvre pour minimiser l'impact de cette maintenance et nous excusons par avance pour la gêne occasionnée.</p>
+            
+            <p>Un email de confirmation vous sera envoyé dès la fin de la maintenance.</p>
+            
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="{{appUrl}}/status" class="button">Voir le statut des services</a>
+            </div>
+            
+            <p>Si vous avez des questions, notre <a href="{{supportUrl}}">équipe support</a> reste à votre disposition.</p>
+            
+            <p>Merci pour votre compréhension.</p>
+            
+            <p>L'équipe {{companyName}}</p>
+        </div>
+        
+        <div class="footer">
+            <p>© {{currentYear}} {{companyName}}. Tous droits réservés.</p>
+            <p>
+                <a href="{{appUrl}}">Site web</a> | 
+                <a href="{{supportUrl}}">Support</a> | 
+                <a href="{{appUrl}}/status">Statut des services</a>
+            </p>
+        </div>
+    </div>
+</body>
+</html>

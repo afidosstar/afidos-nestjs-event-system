@@ -4,6 +4,8 @@
 
 
 
+import {RecipientDistribution, RecipientLoader} from "../loaders/recipient-loader.interface";
+
 /**
  * Interface de base que l'utilisateur étend pour définir ses types d'événements
  */
@@ -36,6 +38,9 @@ export type EventPriority = 'low' | 'normal' | 'high' | 'critical';
 export interface EventTypeConfig {
     /** Description du type d'événement */
     description: string;
+
+    /** Description du type d'événement */
+    subject?: string;
 
     /** Canaux de notification à utiliser */
     channels: NotificationChannel[];
@@ -254,10 +259,8 @@ export interface EventEmissionResult {
  * Interface pour les providers de notification
  */
 export interface NotificationProvider {
-
-
-    /** Envoyer une notification */
-    send(payload: any, context: NotificationContext): Promise<NotificationResult>;
+    /** Envoyer une notification - retourne un tableau de résultats pour chaque destinataire */
+    send(distribution: RecipientDistribution, payload: any, context: NotificationContext): Promise<NotificationResult[]>;
 
 
     /** Vérifier la santé du provider */

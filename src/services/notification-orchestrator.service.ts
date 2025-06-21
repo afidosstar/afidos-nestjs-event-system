@@ -4,9 +4,9 @@ import {
     EventTypesConfig,
     NotificationResult,
     NotificationContext,
-    NotificationProvider
+    NotificationProvider, EventTypeConfig
 } from '../types/interfaces';
-import { RecipientLoader } from '../loaders/recipient-loader.interface';
+import {Recipient, RecipientDistribution, RecipientLoader, RecipientType} from '../loaders/recipient-loader.interface';
 import {getNotifierMetadata, NotifierRegistry} from '../decorators/injectable-notifier.decorator';
 import { EVENT_TYPES_CONFIG } from '../module/event-notifications.module';
 import {BaseNotificationProvider} from "../providers/base-notification-provider";
@@ -42,7 +42,7 @@ export class NotificationOrchestratorService {
 
         try {
             // 1. Récupère la configuration de l'événement
-            const eventConfig = (this.eventTypesConfig as any)[eventType];
+            const eventConfig:EventTypeConfig = (this.eventTypesConfig as any)[eventType];
             if (!eventConfig) {
                 this.logger.warn(`Aucune configuration trouvée pour l'événement: ${eventType}`);
                 return [];
@@ -54,14 +54,14 @@ export class NotificationOrchestratorService {
                 return [];
             }
 
-            const recipients = await this.recipientLoader.load(eventType, payload);
-            if (!recipients || recipients.length === 0) {
+            const distributions = await this.recipientLoader.load(eventType, payload);
+            if (!distributions || distributions.length === 0) {
                 this.logger.warn(`Aucun destinataire trouvé pour l'événement: ${eventType}`);
                 return [];
             }
 
             this.logger.log(
-                `Traitement de l'événement ${eventType} pour ${recipients.length} destinataire(s) ` +
+                `Traitement de l'événement ${eventType} pour ${distributions.length} destinataire(s) ` +
                 `sur les canaux: [${eventConfig.channels.join(', ')}]`
             );
 
@@ -74,8 +74,8 @@ export class NotificationOrchestratorService {
                         channel,
                         eventType,
                         payload,
-                        context,
-                        recipients
+                        {...context, metadata:{...context.metadata||{}, config: eventConfig}},
+                        distributions
                     );
                     allResults.push(...channelResults);
                 } catch (error) {
@@ -121,7 +121,7 @@ export class NotificationOrchestratorService {
         eventType: string,
         payload: any,
         context: NotificationContext,
-        recipients: any[]
+        distributions: RecipientDistribution[]
     ): Promise<NotificationResult[]> {
         // 1. Découvre la classe du provider pour ce canal
         const ProviderClass = NotifierRegistry.getProviderByChannel(channel);
@@ -154,37 +154,40 @@ export class NotificationOrchestratorService {
         // 4. Envoie les notifications à tous les destinataires
         const results: NotificationResult[] = [];
 
-        for (const recipient of recipients) {
+        for (const distribution of distributions) {
             try {
-                const result = await providerInstance.send(payload, {
+                const providerResults = await providerInstance.send(distribution, payload, {
                     ...context,
                     eventType,
                     metadata: {
                         ...context.metadata,
-                        recipient,
                         channel
                     }
                 });
 
-                results.push(result);
+                results.push(...providerResults);
 
-                if (result.status === 'sent') {
-                    this.logger.debug(
-                        `✅ Notification envoyée via ${ProviderClass.name} (${channel}) ` +
-                        `à ${recipient.id || 'destinataire'}`
-                    );
-                } else {
-                    this.logger.warn(
-                        `⚠️ Échec d'envoi via ${ProviderClass.name} (${channel}) ` +
-                        `à ${recipient.id || 'destinataire'}: ${result.error}`
-                    );
-                }
+                // Logger pour chaque résultat
+                providerResults.forEach(result => {
+                    if (result.status === 'sent') {
+                        this.logger.debug(
+                            `✅ Notification envoyée via ${ProviderClass.name} (${channel}) ` +
+                            `à ${result.metadata?.recipientId || 'destinataire'}`
+                        );
+                    } else {
+                        this.logger.warn(
+                            `⚠️ Échec d'envoi via ${ProviderClass.name} (${channel}) ` +
+                            `à ${result.metadata?.recipientId || 'destinataire'}: ${result.error}`
+                        );
+                    }
+                });
 
             } catch (error) {
                 this.logger.error(
                     `Erreur lors de l'envoi via ${ProviderClass.name} (${channel}) ` +
-                    `à ${recipient.id || 'destinataire'}: ${error.message}`
+                    `à ${distribution.name || 'destinataire'}: ${error.message}`
                 );
+
 
                 results.push({
                     channel,
@@ -193,7 +196,7 @@ export class NotificationOrchestratorService {
                     error: error.message,
                     sentAt: new Date(),
                     attempts: context.attempt,
-                    metadata: { recipient, channel }
+                    metadata: {distribution, channel }
                 });
             }
         }

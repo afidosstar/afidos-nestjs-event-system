@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bienvenue {{userName}} !</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #007bff; color: white; text-align: center; padding: 20px; border-radius: 8px 8px 0 0; }
+        .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px; }
+        .button { display: inline-block; background: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; margin: 10px 0; }
+        .footer { text-align: center; font-size: 12px; color: #666; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎉 Bienvenue {{userName}} !</h1>
+        </div>
+        
+        <div class="content">
+            <p>Bonjour {{userName}},</p>
+            
+            <p>Votre compte <strong>{{companyName}}</strong> a été créé avec succès le {{currentDate}}.</p>
+            
+            <p><strong>Informations de votre compte :</strong></p>
+            <ul>
+                <li>Email : {{userEmail}}</li>
+                <li>Date de création : {{currentDate}}</li>
+                <li>ID de compte : {{eventId}}</li>
+            </ul>
+            
+            <p>Vous pouvez maintenant accéder à votre espace personnel et profiter de tous nos services.</p>
+            
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="{{appUrl}}/profile" class="button">Accéder à mon profil</a>
+            </div>
+            
+            <p>Si vous avez des questions, n'hésitez pas à <a href="{{supportUrl}}">contacter notre support</a>.</p>
+            
+            <p>Merci de nous faire confiance !</p>
+            
+            <p>L'équipe {{companyName}}</p>
+        </div>
+        
+        <div class="footer">
+            <p>© {{currentYear}} {{companyName}}. Tous droits réservés.</p>
+            <p>
+                <a href="{{appUrl}}">Site web</a> | 
+                <a href="{{supportUrl}}">Support</a> | 
+                <a href="{{unsubscribeUrl}}">Se désabonner</a>
+            </p>
+        </div>
+    </div>
+</body>
+</html>

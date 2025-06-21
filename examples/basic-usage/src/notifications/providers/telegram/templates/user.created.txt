@@ -1,0 +1,8 @@
+🎉 <b>Bienvenue {{recipientName}} !</b>
+
+Votre compte a été créé avec succès.
+📧 Email: {{formatEmailLink email}}
+
+{{formatTelegramLink (profileUrl id) "Accéder à mon profil"}}
+
+Vous pouvez maintenant profiter de nos services !

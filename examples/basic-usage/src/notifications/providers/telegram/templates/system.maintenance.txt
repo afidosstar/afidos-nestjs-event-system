@@ -1,0 +1,5 @@
+🔧 <b>Maintenance programmée</b>
+
+{{message}}
+
+⏰ Durée estimée: {{duration}}

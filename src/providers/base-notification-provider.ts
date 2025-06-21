@@ -1,5 +1,5 @@
 import { NotificationProvider, NotificationResult, NotificationContext } from '../types/interfaces';
-import { Recipient, RecipientLoader } from '../loaders/recipient-loader.interface';
+import {Recipient, RecipientDistribution} from '../loaders/recipient-loader.interface';
 import { getNotifierMetadata } from '../decorators/injectable-notifier.decorator';
 /**
  * Classe de base pour les providers de notification
@@ -7,18 +7,11 @@ import { getNotifierMetadata } from '../decorators/injectable-notifier.decorator
  * et fournit des utilitaires pour filtrer les destinataires
  */
 export abstract class BaseNotificationProvider<Channel extends string> implements NotificationProvider {
-
-    constructor(
-        protected readonly recipientLoader: RecipientLoader
-    ) {}
-
-
-
-
     /**
      * Méthode abstraite à implémenter par chaque provider
+     * Retourne un tableau de résultats pour chaque destinataire
      */
-    abstract send(payload: any, context: NotificationContext): Promise<NotificationResult>;
+    abstract send(distribution: RecipientDistribution, payload: any, context: NotificationContext): Promise<NotificationResult[]>;
 
     /**
      * Méthode abstraite à implémenter par chaque provider
@@ -56,6 +49,17 @@ export abstract class BaseNotificationProvider<Channel extends string> implement
             const address = recipient[property];
             return address !== undefined && address !== null && address !== '';
         });
+    }
+
+    /**
+     * Extrait tous les recipients d'une distribution
+     */
+    protected extractAllRecipients(distribution: RecipientDistribution): Recipient[] {
+        return [
+            ...distribution.MAIN,
+            ...distribution.COPY,
+            ...distribution.BLIND
+        ];
     }
 
     /**
@@ -123,5 +127,26 @@ export abstract class BaseNotificationProvider<Channel extends string> implement
         metadata?: Record<string, any>
     ): NotificationResult {
         return this.createNotificationResult('sent', context, metadata);
+    }
+
+    /**
+     * Méthode utilitaire pour créer un tableau avec un seul résultat "skipped"
+     */
+    protected createSkippedResults(
+        context: NotificationContext,
+        reason: string
+    ): NotificationResult[] {
+        return [this.createSkippedResult(context, reason)];
+    }
+
+    /**
+     * Méthode utilitaire pour créer un tableau avec un seul résultat "failed"
+     */
+    protected createFailedResults(
+        context: NotificationContext,
+        error: string,
+        metadata?: Record<string, any>
+    ): NotificationResult[] {
+        return [this.createFailedResult(context, error, metadata)];
     }
 }

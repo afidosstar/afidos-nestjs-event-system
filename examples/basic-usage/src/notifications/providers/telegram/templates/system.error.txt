@@ -1,0 +1,8 @@
+🚨 <b>Erreur système</b>
+
+Une erreur critique s'est produite :
+{{formatJson error}}
+
+🕐 {{formatDate timestamp}}
+
+{{formatTelegramLink (supportUrl) "Contacter le support"}}

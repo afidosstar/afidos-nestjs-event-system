@@ -5,6 +5,74 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/),
 et ce projet adhère au [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.5] - 2025-06-22
+
+### 🔄 BREAKING CHANGES - Restructuration complète des providers de notification
+
+#### Simplification maximale des providers
+- **Réécriture complète des providers** : EmailProvider, TelegramProvider, WebhookProvider entièrement simplifiés
+- **Suppression des helpers et templates intégrés** : Tous les providers délèguent maintenant aux template providers
+- **Nouveau provider Teams** : Support complet pour Microsoft Teams avec Adaptive Cards
+- **Architecture template-provider** : Séparation claire entre logique de livraison et génération de contenu
+
+#### Providers simplifiés
+- **EmailProvider** : Ultra-simplifié, utilise EmailTemplateProvider pour la génération de contenu
+- **TelegramProvider** : Focalisé uniquement sur l'API Telegram, délègue à TelegramTemplateProvider
+- **WebhookProvider** : HTTP POST simple avec délégation à WebhookTemplateProvider
+- **TeamsProvider** : Nouveau provider pour Microsoft Teams avec support Adaptive Cards
+
+#### Système de récupération de sujets
+- **Priorité à 3 niveaux** : Context → EventType entity → valeurs par défaut
+- **Configuration flexible** : Sujets récupérés automatiquement depuis la base de données ou le contexte
+- **Fallback intelligent** : Système de fallback robuste pour les sujets manquants
+
+#### Template providers spécialisés
+- **EmailTemplateProvider** : Génération de templates HTML avec Handlebars
+- **TelegramTemplateProvider** : Messages formatés pour Telegram avec emojis et formatage
+- **WebhookTemplateProvider** : Payloads JSON avec signature HMAC-SHA256
+- **TeamsTemplateProvider** : Adaptive Cards Microsoft Teams avec couleurs et actions contextuelles
+
+#### Tests et qualité
+- **Couverture de tests > 80%** : Tests complets pour les composants core
+- **43 tests unitaires** : Coverage des decorators, template engine, et providers
+- **Validation TypeScript** : Type safety renforcée
+- **Tests d'intégration** : Scénarios complexes testés
+
+#### Migration depuis 2.1.4
+```typescript
+// AVANT - Provider avec logique template intégrée
+class EmailProvider {
+  private async renderTemplate(template: string, data: any) {
+    // Logique complexe de template...
+  }
+}
+
+// APRÈS - Provider simplifié avec délégation
+class EmailProvider {
+  async send(distribution, payload, context) {
+    // 1. Filtrer les destinataires emails
+    const emailRecipients = this.filterRecipientsByProperty(
+      this.extractAllRecipients(distribution), 'email'
+    );
+    
+    // 2. Déléguer la génération à EmailTemplateProvider
+    const htmlContent = await this.templateProvider.render(
+      context.eventType, payload, context
+    );
+    
+    // 3. Récupérer le sujet (context → entity → default)
+    const subject = await this.getSubject(context);
+    
+    // 4. Envoyer via SMTP
+    return await this.mailerService.sendMail({
+      to: emailRecipients.map(r => `${r.name} <${r.email}>`),
+      subject,
+      html: htmlContent
+    });
+  }
+}
+```
+
 ## [2.0.0] - 2025-06-19
 
 ### 💥 BREAKING CHANGES - Suppression complète de la notion de drivers

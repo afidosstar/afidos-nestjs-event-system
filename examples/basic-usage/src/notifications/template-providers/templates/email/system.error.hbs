@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Incident technique - {{companyName}}</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #dc3545; color: white; text-align: center; padding: 20px; border-radius: 8px 8px 0 0; }
+        .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px; }
+        .incident-info { background: white; padding: 20px; border-radius: 6px; margin: 20px 0; border-left: 4px solid #dc3545; }
+        .button { display: inline-block; background: #dc3545; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; margin: 10px 0; }
+        .footer { text-align: center; font-size: 12px; color: #666; margin-top: 20px; }
+        .error { background: #f8d7da; border: 1px solid #f5c6cb; padding: 15px; border-radius: 4px; margin: 15px 0; color: #721c24; }
+        .status { background: #d1ecf1; border: 1px solid #bee5eb; padding: 15px; border-radius: 4px; margin: 15px 0; color: #0c5460; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚨 Incident technique</h1>
+        </div>
+        
+        <div class="content">
+            <p>Bonjour {{userName}},</p>
+            
+            <p>Nous vous informons qu'un <strong>incident technique</strong> a été détecté sur nos services {{companyName}}.</p>
+            
+            <div class="incident-info">
+                <h3>Informations sur l'incident</h3>
+                <p><strong>Détecté le :</strong> {{currentDate}}</p>
+                {{#if incidentId}}
+                <p><strong>Référence :</strong> {{incidentId}}</p>
+                {{/if}}
+                {{#if severity}}
+                <p><strong>Gravité :</strong> {{severity}}</p>
+                {{/if}}
+                {{#if description}}
+                <p><strong>Description :</strong> {{description}}</p>
+                {{/if}}
+            </div>
+            
+            <div class="error">
+                <strong>⚠️ Services impactés :</strong>
+                {{#if affectedServices}}
+                <ul>
+                {{#each affectedServices}}
+                    <li>{{this}}</li>
+                {{/each}}
+                </ul>
+                {{else}}
+                <p>Nous analysons actuellement l'étendue de l'impact.</p>
+                {{/if}}
+            </div>
+            
+            <div class="status">
+                <strong>ℹ️ Statut de la résolution :</strong>
+                <p>{{#if status}}{{status}}{{else}}Notre équipe technique travaille activement à la résolution de ce problème.{{/if}}</p>
+                {{#if eta}}
+                <p><strong>Résolution estimée :</strong> {{eta}}</p>
+                {{/if}}
+            </div>
+            
+            <p>Nous nous excusons sincèrement pour les désagréments causés et mettons tout en œuvre pour résoudre ce problème dans les plus brefs délais.</p>
+            
+            <p>Vous serez automatiquement informé dès que l'incident sera résolu.</p>
+            
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="{{appUrl}}/status" class="button">Voir le statut en temps réel</a>
+            </div>
+            
+            <p>Pour toute question urgente, notre <a href="{{supportUrl}}">équipe support</a> reste à votre disposition.</p>
+            
+            <p>Merci pour votre patience.</p>
+            
+            <p>L'équipe {{companyName}}</p>
+        </div>
+        
+        <div class="footer">
+            <p>© {{currentYear}} {{companyName}}. Tous droits réservés.</p>
+            <p>
+                <a href="{{appUrl}}">Site web</a> | 
+                <a href="{{supportUrl}}">Support</a> | 
+                <a href="{{appUrl}}/status">Statut des services</a>
+            </p>
+        </div>
+    </div>
+</body>
+</html>

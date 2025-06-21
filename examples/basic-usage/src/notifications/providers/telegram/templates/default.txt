@@ -1,0 +1,6 @@
+📢 <b>Notification: {{eventType}}</b>
+
+{{#if recipientName}}{{recipientName}}
+{{/if}}<pre>{{payloadJson}}</pre>
+
+🔗 ID: <code>{{recipientId}}</code>

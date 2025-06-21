@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Commande confirmée #{{orderId}}</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #28a745; color: white; text-align: center; padding: 20px; border-radius: 8px 8px 0 0; }
+        .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px; }
+        .order-summary { background: white; padding: 20px; border-radius: 6px; margin: 20px 0; border-left: 4px solid #28a745; }
+        .button { display: inline-block; background: #28a745; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; margin: 10px 0; }
+        .footer { text-align: center; font-size: 12px; color: #666; margin-top: 20px; }
+        .price { font-weight: bold; color: #28a745; font-size: 1.2em; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📦 Commande confirmée !</h1>
+        </div>
+        
+        <div class="content">
+            <p>Bonjour {{userName}},</p>
+            
+            <p>Votre commande <strong>#{{orderId}}</strong> a été confirmée et sera traitée dans les plus brefs délais.</p>
+            
+            <div class="order-summary">
+                <h3>Récapitulatif de votre commande</h3>
+                <p><strong>Numéro :</strong> {{orderId}}</p>
+                <p><strong>Date :</strong> {{currentDate}}</p>
+                {{#if total}}
+                <p><strong>Montant total :</strong> <span class="price">{{formatPrice total}}</span></p>
+                {{/if}}
+                {{#if items}}
+                <p><strong>Nombre d'articles :</strong> {{items}} article(s)</p>
+                {{/if}}
+            </div>
+            
+            <p>Vous recevrez un email de confirmation d'expédition dès que votre commande quittera notre entrepôt.</p>
+            
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="{{appUrl}}/orders/{{orderId}}" class="button">Suivre ma commande</a>
+            </div>
+            
+            <p>Si vous avez des questions concernant votre commande, n'hésitez pas à <a href="{{supportUrl}}">contacter notre service client</a>.</p>
+            
+            <p>Merci pour votre confiance !</p>
+            
+            <p>L'équipe {{companyName}}</p>
+        </div>
+        
+        <div class="footer">
+            <p>© {{currentYear}} {{companyName}}. Tous droits réservés.</p>
+            <p>
+                <a href="{{appUrl}}">Site web</a> | 
+                <a href="{{supportUrl}}">Support</a> | 
+                <a href="{{unsubscribeUrl}}">Se désabonner</a>
+            </p>
+        </div>
+    </div>
+</body>
+</html>

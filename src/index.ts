@@ -33,7 +33,7 @@ export {
 
 
 // Loaders et interfaces étendues
-export { RecipientLoader, Recipient } from './loaders/recipient-loader.interface';
+export { RecipientLoader, Recipient, RecipientDistribution, RecipientType } from './loaders/recipient-loader.interface';
 
 // Base class pour providers
 export { BaseNotificationProvider } from './providers/base-notification-provider';
@@ -78,6 +78,8 @@ export {
     SystemEvent
 } from './types/interfaces';
 
+// Template Engine
+export * from './template-engine';
 
 // No default providers - providers are now in examples/basic-usage/src/providers
 

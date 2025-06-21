@@ -1,0 +1,7 @@
+🚚 <b>Commande expédiée</b>
+
+Bonjour {{recipientName}},
+Votre commande #{{formatTrackingCode id}} est en route !
+
+📦 Suivi: {{formatTrackingCode trackingNumber}}
+{{formatTelegramLink (trackingUrl trackingNumber) "Suivre ma commande"}}

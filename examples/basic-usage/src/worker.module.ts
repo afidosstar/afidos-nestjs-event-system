@@ -5,10 +5,10 @@ import {
 } from '@afidos/nestjs-event-notifications';
 
 // Providers
-import { EmailProvider } from './notifications/providers/email-provider/email.provider';
-import { CustomMailerModule } from './notifications/providers/email-provider/mailer.module';
-import { TelegramProvider } from './notifications/providers/telegram.provider';
-import { WebhookProvider } from './notifications/providers/webhook.provider';
+import { EmailProvider } from './notifications/providers/email/email.provider';
+import { CustomMailerModule } from './notifications/providers/email/mailer.module';
+import { TelegramModule } from './notifications/providers/telegram/telegram.module';
+import { WebhookModule } from './notifications/providers/webhook/webhook.module';
 
 // Loaders
 import { StaticRecipientLoader } from './loaders/static-recipient.loader';
@@ -42,6 +42,10 @@ import { EventType } from './entities/event-type.entity';
         // Configuration du mailer pour l'email provider
         CustomMailerModule,
 
+        // Provider Modules
+        TelegramModule,
+        WebhookModule,
+
         // Module des notifications en mode worker
         EventNotificationsModule.forRoot<MyAppEvents>({
             ...packageConfig,
@@ -68,10 +72,8 @@ import { EventType } from './entities/event-type.entity';
         // Recipient loader
         StaticRecipientLoader,
 
-        // Providers de notifications
-        EmailProvider,
-        TelegramProvider,
-        WebhookProvider
+        // Email provider (not in module yet)
+        EmailProvider
     ]
 })
 export class WorkerModule {}

@@ -14,13 +14,18 @@ import {OrderModule} from "./order/order.module";
 import {EventTypesModule} from "./event-types/event-types.module";
 import {CommandsModule} from "./commands/commands.module";
 import {HealthController} from "./health/health.controller";
-import {EmailProvider} from "./notifications/providers/email-provider/email.provider";
-import {CustomMailerModule} from "./notifications/providers/email-provider/mailer.module";
-import {TelegramProvider} from "./notifications/providers/telegram.provider";
-import {WebhookProvider} from "./notifications/providers/webhook.provider";
+import {EmailProvider} from "./notifications/providers/email/email.provider";
+import {CustomMailerModule} from "./notifications/providers/email/mailer.module";
+import { TelegramModule } from "./notifications/providers/telegram/telegram.module";
+import { WebhookModule } from "./notifications/providers/webhook/webhook.module";
+import { TeamsModule } from "./notifications/providers/teams/teams.module";
 import {StaticRecipientLoader} from "./loaders/static-recipient.loader";
 import {UserAnalyticsHandler} from "./handlers/user-analytics.handler";
 import {AuditLogHandler} from "./handlers/audit-log.handler";
+import {EmailTemplateProvider} from "./notifications/template-providers/email-template.provider";
+import {SmsTemplateProvider} from "./notifications/template-providers/sms-template.provider";
+import {WebhookTemplateProvider} from "./notifications/template-providers/webhook-template.provider";
+import {TeamsTemplateProvider} from "./notifications/template-providers/teams-template.provider";
 @Module({
   controllers: [HealthController],
   imports: [
@@ -45,7 +50,12 @@ import {AuditLogHandler} from "./handlers/audit-log.handler";
     UserModule,
     OrderModule,
     EventTypesModule,
-    CommandsModule
+    CommandsModule,
+
+    // Provider Modules
+    TelegramModule,
+    WebhookModule,
+    TeamsModule
   ],
   providers: [
     AppService,
@@ -57,10 +67,14 @@ import {AuditLogHandler} from "./handlers/audit-log.handler";
     UserAnalyticsHandler,
     AuditLogHandler,
 
+    // Template Providers
+    EmailTemplateProvider,
+    SmsTemplateProvider,
+    WebhookTemplateProvider,
+    TeamsTemplateProvider,
+
     // Notification Providers 
-    EmailProvider,
-    TelegramProvider,
-    WebhookProvider
+    EmailProvider
   ]
 })
 export class AppModule {}

@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { RecipientLoader, Recipient } from '@afidos/nestjs-event-notifications';
+import { RecipientLoader, Recipient, RecipientDistribution, RecipientType } from '@afidos/nestjs-event-notifications';
 
 /**
  * Loader de destinataires statique pour l'exemple
@@ -16,6 +16,7 @@ export class StaticRecipientLoader implements RecipientLoader {
         'user.created': (payload) => [
             {
                 id: payload.id?.toString() || 'new-user',
+                name: `${payload.firstName || ''} ${payload.lastName || ''}`.trim() || payload.email,
                 email: payload.email,
                 firstName: payload.firstName,
                 lastName: payload.lastName,
@@ -26,6 +27,7 @@ export class StaticRecipientLoader implements RecipientLoader {
         'user.updated': (payload) => [
             {
                 id: payload.id?.toString() || 'updated-user',
+                name: `${payload.firstName || ''} ${payload.lastName || ''}`.trim() || payload.email,
                 email: payload.email,
                 firstName: payload.firstName,
                 lastName: payload.lastName,
@@ -37,6 +39,7 @@ export class StaticRecipientLoader implements RecipientLoader {
         'order.created': (payload) => [
             {
                 id: payload.userId?.toString() || 'customer',
+                name: payload.customerName || payload.customerEmail,
                 email: payload.customerEmail,
                 firstName: payload.customerName?.split(' ')[0],
                 lastName: payload.customerName?.split(' ').slice(1).join(' '),
@@ -47,6 +50,7 @@ export class StaticRecipientLoader implements RecipientLoader {
         'order.shipped': (payload) => [
             {
                 id: payload.userId?.toString() || 'customer',
+                name: payload.customerName || payload.customerEmail,
                 email: payload.customerEmail,
                 firstName: payload.customerName?.split(' ')[0],
                 lastName: payload.customerName?.split(' ').slice(1).join(' '),
@@ -57,6 +61,7 @@ export class StaticRecipientLoader implements RecipientLoader {
         'order.delivered': (payload) => [
             {
                 id: payload.userId?.toString() || 'customer',
+                name: payload.customerName || payload.customerEmail,
                 email: payload.customerEmail,
                 firstName: payload.customerName?.split(' ')[0],
                 lastName: payload.customerName?.split(' ').slice(1).join(' '),
@@ -72,6 +77,7 @@ export class StaticRecipientLoader implements RecipientLoader {
         'default': (payload) => [
             {
                 id: 'admin',
+                name: 'Admin System',
                 email: 'admin@example.com',
                 firstName: 'Admin',
                 lastName: 'System',
@@ -82,7 +88,7 @@ export class StaticRecipientLoader implements RecipientLoader {
         ]
     };
 
-    async load(eventType: string, payload: any): Promise<Recipient[]> {
+    async load(eventType: string, payload: any): Promise<RecipientDistribution[]> {
         this.logger.debug(`Loading recipients for event: ${eventType}`);
 
         try {
@@ -97,7 +103,15 @@ export class StaticRecipientLoader implements RecipientLoader {
 
             this.logger.debug(`Found ${enabledRecipients.length} enabled recipients for event ${eventType}`);
 
-            return enabledRecipients;
+            // Créer une distribution simple avec tous les destinataires en MAIN
+            const distribution: RecipientDistribution = {
+                name: `${eventType}-distribution`,
+                [RecipientType.MAIN]: enabledRecipients,
+                [RecipientType.COPY]: [],
+                [RecipientType.BLIND]: []
+            };
+
+            return [distribution];
 
         } catch (error) {
             this.logger.error(`Failed to load recipients for event ${eventType}: ${error.message}`);
@@ -112,6 +126,7 @@ export class StaticRecipientLoader implements RecipientLoader {
         return [
             {
                 id: 'admin1',
+                name: 'Admin Principal',
                 email: 'admin@example.com',
                 firstName: 'Admin',
                 lastName: 'Principal',
@@ -121,6 +136,7 @@ export class StaticRecipientLoader implements RecipientLoader {
             },
             {
                 id: 'admin2',
+                name: 'Admin Technique',
                 email: 'tech@example.com',
                 firstName: 'Admin',
                 lastName: 'Technique',
@@ -142,6 +158,7 @@ export class StaticRecipientLoader implements RecipientLoader {
             ...this.getSystemAdmins(),
             {
                 id: 'user1',
+                name: 'John Doe',
                 email: 'user1@example.com',
                 firstName: 'John',
                 lastName: 'Doe',
@@ -149,6 +166,7 @@ export class StaticRecipientLoader implements RecipientLoader {
             },
             {
                 id: 'user2',
+                name: 'Jane Smith',
                 email: 'user2@example.com',
                 firstName: 'Jane',
                 lastName: 'Smith',

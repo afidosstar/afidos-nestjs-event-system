@@ -1,0 +1,11 @@
+📦 <b>Nouvelle commande</b>
+
+Bonjour {{recipientName}},
+Votre commande #{{formatTrackingCode id}} a été créée.
+
+💰 Total: <b>{{formatPrice total}}</b>
+📅 Date: {{formatDateShort currentDate}}
+
+{{formatTelegramLink (orderUrl id) "Voir ma commande"}}
+
+Nous vous tiendrons informé de son statut.

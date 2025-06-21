@@ -4,15 +4,44 @@ Une librairie moderne et extensible pour gérer les notifications d'événements
 
 ## 🚀 Caractéristiques
 
-- **🏗️ Architecture basée sur des drivers** - Drivers HTTP et SMTP pré-configurés
+- **🏗️ Architecture ultra-simplifiée** - Providers autonomes sans complexité de drivers
 - **🔒 Extensions d'interface TypeScript** - Type safety garantie avec support des propriétés dynamiques
-- **📧 Providers extensibles** - Email, Telegram, Webhook pré-conçus + créez les vôtres
+- **📧 Providers simplifiés** - Email, Telegram, Webhook, Teams ultra-simples + template providers dédiés
 - **🎯 RecipientLoader** - Résolution dynamique des destinataires
 - **🔍 Auto-découverte** - Décorateurs `@InjectableNotifier` et `@InjectableHandler` pour découverte automatique
 - **⚡ Gestion intelligente des queues** - Modes `api`, `worker`, `hybrid` avec Redis
 - **⚙️ Configuration simplifiée** - Plus besoin de configuration manuelle des providers
 - **🎯 Event Handler System** - Pattern handlers pour logique métier (analytics, audit, workflows)
 - **🔄 Dual Processing** - Notifications externes + Handlers métier en parallèle
+- **🧪 Tests complets** - Couverture > 80% avec 43 tests unitaires
+- **🚀 Provider Teams** - Support Microsoft Teams avec Adaptive Cards
+
+## ✨ Nouveautés v2.1.5
+
+### 🔄 Restructuration Complète des Providers
+- **Simplification maximale** : Chaque provider se concentre uniquement sur la livraison
+- **Template Providers dédiés** : Séparation claire entre logique de transport et génération de contenu
+- **Provider Teams** : Nouveau support pour Microsoft Teams avec Adaptive Cards
+- **Récupération intelligente des sujets** : Système à 3 niveaux (context → entity → default)
+
+### 📧 Providers Ultra-Simplifiés
+```typescript
+// EmailProvider - Ultra-simple, délègue tout à EmailTemplateProvider
+async send(distribution, payload, context) {
+  const recipients = this.filterRecipientsByProperty(
+    this.extractAllRecipients(distribution), 'email'
+  );
+  const content = await this.templateProvider.render(context.eventType, payload, context);
+  const subject = await this.getSubject(context);
+  return this.mailerService.sendMail({ to: recipients, subject, html: content });
+}
+```
+
+### 🎨 Template Providers Spécialisés
+- **EmailTemplateProvider** : Templates HTML avec Handlebars
+- **TelegramTemplateProvider** : Messages formatés avec emojis  
+- **WebhookTemplateProvider** : Payloads JSON avec signatures HMAC
+- **TeamsTemplateProvider** : Adaptive Cards avec couleurs et actions
 
 ## 📦 Installation
 

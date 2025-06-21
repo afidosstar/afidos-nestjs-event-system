@@ -3,11 +3,21 @@
  */
 export interface BaseRecipient {
     id: string;
+    name: string;
     preferences?: {
         enabled: boolean;
         schedule?: string; // cron expression pour planifier les notifications
         timezone?: string;
     };
+}
+export enum RecipientType {
+    MAIN = 'MAIN',     // Destinataires principaux
+    COPY = 'COPY',     // Destinataires en copie
+    BLIND = 'BLIND'    // Destinataires aveugles
+}
+
+export interface RecipientDistribution extends Record<RecipientType, Recipient[]> {
+    name: string
 }
 
 /**
@@ -19,6 +29,7 @@ export interface Recipient extends BaseRecipient {
     // Par exemple : email?: string; telegramId?: string; etc.
 }
 
+
 /**
  * Interface pour charger les destinataires depuis différentes sources
  */
@@ -29,5 +40,5 @@ export interface RecipientLoader {
      * @param payload Les données de l'événement
      * @returns Les destinataires avec toutes leurs informations de contact
      */
-    load(eventType: string, payload: any): Promise<Recipient[]>;
+    load(eventType: string, payload: any): Promise<RecipientDistribution[]>;
 }

@@ -16,32 +16,6 @@ Une librairie moderne et extensible pour gérer les notifications d'événements
 - **🧪 Tests complets** - Couverture > 80% avec 43 tests unitaires
 - **🚀 Provider Teams** - Support Microsoft Teams avec Adaptive Cards
 
-## ✨ Nouveautés v2.1.5
-
-### 🔄 Restructuration Complète des Providers
-- **Simplification maximale** : Chaque provider se concentre uniquement sur la livraison
-- **Template Providers dédiés** : Séparation claire entre logique de transport et génération de contenu
-- **Provider Teams** : Nouveau support pour Microsoft Teams avec Adaptive Cards
-- **Récupération intelligente des sujets** : Système à 3 niveaux (context → entity → default)
-
-### 📧 Providers Ultra-Simplifiés
-```typescript
-// EmailProvider - Ultra-simple, délègue tout à EmailTemplateProvider
-async send(distribution, payload, context) {
-  const recipients = this.filterRecipientsByProperty(
-    this.extractAllRecipients(distribution), 'email'
-  );
-  const content = await this.templateProvider.render(context.eventType, payload, context);
-  const subject = await this.getSubject(context);
-  return this.mailerService.sendMail({ to: recipients, subject, html: content });
-}
-```
-
-### 🎨 Template Providers Spécialisés
-- **EmailTemplateProvider** : Templates HTML avec Handlebars
-- **TelegramTemplateProvider** : Messages formatés avec emojis  
-- **WebhookTemplateProvider** : Payloads JSON avec signatures HMAC
-- **TeamsTemplateProvider** : Adaptive Cards avec couleurs et actions
 
 ## 📦 Installation
 
@@ -316,7 +290,7 @@ REDIS_HOST=localhost
 REDIS_PORT=6379
 ```
 
-### 4. Créer un Event Handler (Nouveau v1.0.3)
+### 4. Créer un Event Handler
 
 Les **Event Handlers** permettent d'exécuter de la logique métier en réaction aux événements (analytics, audit, workflows, etc.). Ils s'exécutent **en parallèle** des notifications.
 
@@ -481,7 +455,7 @@ export class AuditLogHandler implements EventHandler {
         EmailProvider,
         TelegramProvider,
         
-        // Event Handlers (auto-découverte) - NOUVEAU !
+        // Event Handlers (auto-découverte)
         UserAnalyticsHandler,
         AuditLogHandler,
         
@@ -732,106 +706,6 @@ REDIS_PASSWORD=optional
 WEBHOOK_URL=https://your-webhook-url.com
 ```
 
-## 🆕 Nouveautés v1.0.3
-
-### Event Handler System (Nouveau)
-```typescript
-@InjectableHandler({
-    name: 'UserAnalyticsHandler',
-    eventTypes: ['user.created', 'user.updated'],
-    priority: 100,
-    queue: {
-        processing: 'async',
-        priority: 8,
-        retry: { attempts: 3, backoff: { type: 'exponential', delay: 2000 } }
-    }
-})
-export class UserAnalyticsHandler implements EventHandler {
-    async execute(eventType: string, payload: any, context: EventHandlerContext): Promise<any> {
-        // Logique métier (analytics, audit, workflows, etc.)
-    }
-    
-    // Lifecycle callbacks
-    async beforeQueue?(): Promise<void>
-    async afterExecute?(): Promise<void>
-    async onError?(): Promise<void>
-}
-```
-
-### Traitement Dual Automatique
-```typescript
-// UN événement → DEUX traitements en parallèle
-await eventEmitter.emitAsync('user.created', payload);
-
-/* 
-📧 NOTIFICATIONS → Communication externe
-🎯 HANDLERS → Logique métier
-Traitement complètement découplé et parallèle !
-*/
-```
-
-### Configuration Avancée des Queues
-```typescript
-interface HandlerQueueConfig {
-    processing: 'sync' | 'async' | 'delayed'
-    delay?: { ms: number; strategy?: 'fixed' | 'exponential' }
-    retry?: { attempts: number; backoff?: { type: 'fixed' | 'exponential'; delay: number } }
-    priority?: number // 1-10, 10 = plus haute priorité
-    timeout?: number
-    concurrency?: number
-}
-```
-
----
-
-## 🆕 Nouveautés v1.0.0
-
-### Auto-découverte avec `@InjectableNotifier`
-```typescript
-@InjectableNotifier({
-    channel: 'telegram',
-    driver: 'http',
-    description: 'Provider Telegram'
-})
-export class TelegramProvider extends NotificationProvider<'telegramId'> {
-    protected readonly property = 'telegramId';  // Optionnel
-    
-    // Le provider s'enregistre automatiquement !
-    // Plus besoin de configuration manuelle
-}
-```
-
-### Gestion Intelligente des Queues
-```typescript
-export const packageConfig = createPackageConfig({
-    mode: 'hybrid',  // 'api', 'worker', ou 'hybrid'
-    
-    queue: {
-        redis: { host: 'localhost', port: 6379 }
-    },
-    
-    // Le système décide automatiquement :
-    // - Mode 'api' : traitement immédiat
-    // - Mode 'worker' : queue obligatoire  
-    // - Mode 'hybrid' : queue si disponible, sinon immédiat
-});
-```
-
-### Type Safety pour les Drivers
-```typescript
-// Augmentation de module automatique
-import '@afidos/nestjs-event-notifications/drivers/smtp.driver';
-import '@afidos/nestjs-event-notifications/drivers/http.driver';
-
-// TypeScript valide automatiquement driver ↔ config
-const provider: NotificationProviderConfig<'smtp'> = {
-    driver: 'smtp',  // ✅ 
-    config: {        // ✅ Type SmtpDriverConfig automatique
-        host: 'smtp.gmail.com',
-        port: 587
-    }
-};
-```
 
 ## 📚 Exemple Complet
 
@@ -866,57 +740,6 @@ curl -X POST http://localhost:3000/orders \
   -d '{"customerId":1,"items":[{"productId":"prod1","quantity":2,"price":10.50}]}'
 ```
 
-## 🔄 Migration depuis v0.x
-
-Si vous migrez depuis une version antérieure :
-
-### 1. Remplacement de `@Injectable()` par `@InjectableNotifier()`
-```typescript
-// Avant
-@Injectable()
-export class EmailProvider implements NotificationProvider {
-    readonly channel = 'email';
-}
-
-// Maintenant
-@InjectableNotifier({
-    channel: 'email',
-    driver: 'smtp',
-    description: 'Provider email'
-})
-export class EmailProvider implements NotificationProvider {
-    protected readonly property = 'email';  // Optionnel
-}
-```
-
-### 2. Simplification de la configuration
-```typescript
-// Avant - Configuration manuelle complexe
-providers: {
-    email: {
-        driver: 'smtp',
-        config: { host: 'smtp.gmail.com', port: 587, auth: {} }
-    }
-}
-
-// Maintenant - Auto-découverte
-// Plus besoin ! Les providers s'enregistrent automatiquement
-```
-
-### 3. Utilisation de `getChannelName()` au lieu de `this.channel`
-```typescript
-// Avant
-return {
-    channel: this.channel,  // ❌ 
-    provider: this.getProviderName()
-};
-
-// Maintenant  
-return {
-    channel: this.getChannelName(),  // ✅ Récupère depuis @InjectableNotifier
-    provider: this.getProviderName()
-};
-```
 
 ## 🤝 Contribution
 
@@ -931,21 +754,3 @@ Les contributions sont les bienvenues ! Pour contribuer :
 ## 📄 Licence
 
 [MIT](LICENSE)
-
-## 🏷️ Version
-
-**1.0.3** - Event Handler System avec traitement dual :
-- 🎯 **Event Handler System** avec pattern Publisher-Subscriber-Handler
-- 🔄 **Traitement dual** : Notifications externes + Handlers métier en parallèle
-- ⚡ **Queues avancées** avec priorités, retry policies et concurrence
-- 🔍 **Auto-découverte handlers** via `@InjectableHandler`
-- 📊 **Lifecycle complet** avec callbacks beforeQueue/afterExecute/onError
-- 🎨 **Support wildcards** pour handlers universels (audit, logging)
-- 🏗️ **Architecture renforcée** avec résolution des dépendances circulaires
-
-**1.0.0** - Architecture modernisée avec :
-- ✨ Auto-découverte des providers via `@InjectableNotifier`
-- ⚡ Gestion intelligente des queues (modes `api`/`worker`/`hybrid`)
-- 🔒 Type safety automatique pour les drivers (augmentation de module)
-- 📦 Configuration simplifiée (plus besoin de config manuelle des providers)
-- 🚀 Système d'orchestration centralisé avec `QueueManagerService`

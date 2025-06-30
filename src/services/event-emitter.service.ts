@@ -15,7 +15,7 @@ import { QueueManagerService } from './queue-manager.service';
  */
 @Injectable()
 export class EventEmitterService<T extends EventPayloads = EventPayloads> {
-    private readonly logger = new Logger(EventEmitterService.name);
+    protected readonly logger = new Logger(EventEmitterService.name);
 
     constructor(
         @Inject(forwardRef(() => EVENT_TYPES_CONFIG)) private readonly eventConfig: EventTypesConfig<T>,

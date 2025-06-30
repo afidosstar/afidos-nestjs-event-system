@@ -22,7 +22,7 @@ import {BaseNotificationProvider} from "../providers/base-notification-provider"
  */
 @Injectable()
 export class NotificationOrchestratorService {
-    private readonly logger = new Logger(NotificationOrchestratorService.name);
+    protected readonly logger = new Logger(NotificationOrchestratorService.name);
 
     constructor(
         @Inject(forwardRef(() => EVENT_TYPES_CONFIG)) private readonly eventTypesConfig: EventTypesConfig,

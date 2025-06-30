@@ -2,19 +2,18 @@
 // EXPORTS PRINCIPAUX DU PACKAGE
 // ================================
 
-import {EventPayloads, EventTypesConfig, PackageConfig, EventTypeConfig } from './types/interfaces';
-
-// Module principal
+// ========== MODULE PRINCIPAL ==========
 export { EventNotificationsModule } from './module/event-notifications.module';
 
-// Services
+// ========== SERVICES CORE ==========
 export { EventEmitterService } from './services/event-emitter.service';
 export { NotificationOrchestratorService } from './services/notification-orchestrator.service';
 export { QueueManagerService } from './services/queue-manager.service';
 export { EventHandlerManagerService } from './services/event-handler-manager.service';
 export { HandlerQueueManagerService } from './services/handler-queue-manager.service';
 
-// Interfaces et types pour les handlers
+// ========== INTERFACES ==========
+// Event Handlers
 export { EventHandler } from './interfaces/event-handler.interface';
 export {
     HandlerQueueConfig,
@@ -22,7 +21,19 @@ export {
     EventHandlerContext
 } from './types/handler-queue.types';
 
-// Décorateurs et utilitaires pour les handlers
+// Recipients
+export { 
+    RecipientLoader, 
+    Recipient, 
+    RecipientDistribution, 
+    RecipientType 
+} from './loaders/recipient-loader.interface';
+
+// ========== PROVIDERS ==========
+export { BaseNotificationProvider } from './providers/base-notification-provider';
+
+// ========== DÉCORATEURS ==========
+// Handler Decorators
 export {
     InjectableHandler,
     HandlerMetadata,
@@ -31,14 +42,7 @@ export {
     getHandlerMetadata
 } from './decorators/injectable-handler.decorator';
 
-
-// Loaders et interfaces étendues
-export { RecipientLoader, Recipient, RecipientDistribution, RecipientType } from './loaders/recipient-loader.interface';
-
-// Base class pour providers
-export { BaseNotificationProvider } from './providers/base-notification-provider';
-
-// Décorateur pour providers de notification
+// Notifier Decorators
 export {
     InjectableNotifier,
     NotifierRegistry,
@@ -48,22 +52,24 @@ export {
 } from './decorators/injectable-notifier.decorator';
 export type { NotifierMetadata } from './decorators/injectable-notifier.decorator';
 
-// Types et interfaces publiques
+// ========== TYPES ET INTERFACES ==========
 export {
+    // Configuration principale
     EventTypeConfig,
+    EventTypesConfig,
+    PackageConfig,
+    
     // Types de base
     EventPayloads,
     NotificationChannel,
     ProcessingMode,
     EventPriority,
 
-    // Configuration
-    EventTypesConfig,
+    // Configuration avancée
     QueueConfig,
-    PackageConfig,
     RetryPolicy,
 
-    // Options et résultats
+    // Émission et résultats
     EmitOptions,
     NotificationResult,
     EventEmissionResult,
@@ -73,17 +79,15 @@ export {
     // Provider interface
     NotificationProvider,
 
-    // Stats et monitoring
+    // Monitoring
     ProviderStats,
     SystemEvent
 } from './types/interfaces';
 
-// Template Engine
+// ========== TEMPLATE ENGINE ==========
 export * from './template-engine';
 
-// No default providers - providers are now in examples/basic-usage/src/providers
-
-// Tokens d'injection
+// ========== TOKENS D'INJECTION ==========
 export {
     EVENT_NOTIFICATIONS_CONFIG,
     EVENT_TYPES_CONFIG,
@@ -94,6 +98,8 @@ export {
 // ================================
 // HELPERS ET UTILS
 // ================================
+
+import type { EventPayloads, EventTypesConfig, PackageConfig } from './types/interfaces';
 
 /**
  * Helper pour créer une configuration d'événement type-safe

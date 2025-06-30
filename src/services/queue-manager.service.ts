@@ -29,7 +29,7 @@ export interface QueueProvider {
  */
 @Injectable()
 export class QueueManagerService {
-    private readonly logger = new Logger(QueueManagerService.name);
+    protected readonly logger = new Logger(QueueManagerService.name);
     private queueProvider?: QueueProvider;
     private readonly mode: 'api' | 'worker' | 'hybrid';
     private readonly queueConfig?: QueueConfig;

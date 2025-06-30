@@ -8,7 +8,7 @@ import { PackageConfig } from '../types/interfaces';
 
 @Injectable()
 export class HandlerQueueManagerService implements OnModuleInit, OnModuleDestroy {
-    private readonly logger = new Logger(HandlerQueueManagerService.name);
+    protected readonly logger = new Logger(HandlerQueueManagerService.name);
     private readonly handlerQueues = new Map<string, QueueProvider>();
     private readonly queueConfigs = new Map<string, HandlerQueueConfig>();
 
@@ -42,7 +42,7 @@ export class HandlerQueueManagerService implements OnModuleInit, OnModuleDestroy
      */
     async registerHandlerQueue(handlerName: string, config: HandlerQueueConfig, handler: EventHandler) {
         const queueName = config.name || `handler-${handlerName}`;
-        
+
         try {
             // Utilise le QueueManagerService existant pour créer la queue
             const queueProvider = await this.queueManager.createQueue(queueName, {
@@ -179,7 +179,7 @@ export class HandlerQueueManagerService implements OnModuleInit, OnModuleDestroy
 
             const duration = Date.now() - startTime;
             this.logger.error(`Erreur lors du traitement du job ${jobData.id}: ${error.message} (${duration}ms)`);
-            
+
             throw error; // Re-throw pour que Bull gère les tentatives
         }
     }

@@ -9,7 +9,7 @@ import { EVENT_NOTIFICATIONS_CONFIG } from '../module/event-notifications.module
 
 @Injectable()
 export class EventHandlerManagerService implements OnModuleInit {
-    private readonly logger = new Logger(EventHandlerManagerService.name);
+    protected readonly logger = new Logger(EventHandlerManagerService.name);
     private readonly handlers = new Map<string, EventHandler[]>();
     private readonly handlerInstances = new Map<string, EventHandler>();
     private readonly handlerMetadata = new Map<string, HandlerMetadata>();
@@ -29,12 +29,12 @@ export class EventHandlerManagerService implements OnModuleInit {
      */
     private async discoverAndRegisterHandlers() {
         const discoveredHandlers = discoverEventHandlers();
-        
+
         for (const { class: HandlerClass, metadata } of discoveredHandlers) {
             try {
                 // Récupère l'instance du handler depuis le container NestJS
                 const handlerInstance = await this.moduleRef.get(HandlerClass, { strict: false });
-                
+
                 if (handlerInstance && typeof handlerInstance.execute === 'function') {
                     await this.registerHandler(handlerInstance, metadata);
                 }
@@ -51,7 +51,7 @@ export class EventHandlerManagerService implements OnModuleInit {
      */
     private async registerHandler(handler: EventHandler, metadata: HandlerMetadata) {
         const handlerName = metadata.name;
-        
+
         this.handlerInstances.set(handlerName, handler);
         this.handlerMetadata.set(handlerName, metadata);
 
@@ -79,7 +79,7 @@ export class EventHandlerManagerService implements OnModuleInit {
      */
     async executeHandlers(eventType: string, payload: any, context: EventHandlerContext): Promise<any[]> {
         const handlers = this.getHandlersForEvent(eventType);
-        
+
         if (handlers.length === 0) {
             this.logger.debug(`Aucun handler trouvé pour l'événement: ${eventType}`);
             return [];
@@ -114,7 +114,7 @@ export class EventHandlerManagerService implements OnModuleInit {
                 } else {
                     // Exécution synchrone directe
                     const executionResult = await handler.execute(eventType, payload, context);
-                    
+
                     result = {
                         handler: handlerName,
                         result: executionResult,
@@ -147,7 +147,7 @@ export class EventHandlerManagerService implements OnModuleInit {
     private getHandlersForEvent(eventType: string): EventHandler[] {
         const specificHandlers = this.handlers.get(eventType) || [];
         const wildcardHandlers = this.handlers.get('*') || [];
-        
+
         return [...specificHandlers, ...wildcardHandlers];
     }
 
@@ -186,7 +186,7 @@ export class EventHandlerManagerService implements OnModuleInit {
      */
     async getStats() {
         const queueHealth = await this.handlerQueueManager.checkQueuesHealth();
-        
+
         return {
             totalHandlers: this.handlerInstances.size,
             eventTypes: Array.from(this.handlers.keys()),
@@ -215,7 +215,7 @@ export class EventHandlerManagerService implements OnModuleInit {
             queuedHandlers: Array.from(this.handlerMetadata.values())
                 .filter(metadata => metadata.queue && metadata.queue.processing !== 'sync').length
         };
-        
+
         this.logger.log(
             `${stats.totalHandlers} handlers enregistrés pour ${stats.eventTypes} types d'événements ` +
             `(${stats.queuedHandlers} avec queues)`

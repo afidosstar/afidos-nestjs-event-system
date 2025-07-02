@@ -24,6 +24,21 @@ Une librairie moderne et extensible pour gérer les notifications d'événements
 npm install @afidos/nestjs-event-notifications
 ```
 
+## 🆕 Version 2.2.2 - Nouveautés
+
+### 🔧 Améliorations de Configuration
+- **Configuration standardisée** des exemples avec chemins unifiés
+- **Gestion d'environnement améliorée** avec ConfigModule.forRoot()
+- **Nettoyage des configurations** - Suppression des imports dupliqués
+- **Optimisation nest-cli.json** avec tsConfigPath configuré
+- **Exemples Bull/BullMQ** - Modules d'exemple séparés pour chaque provider
+
+### 📁 Structure de Fichiers Optimisée
+- **Suppression des fichiers de base de données** du contrôle de version
+- **Chemins standardisés** : `./db.sqlite` au lieu de `./data/db.sqlite`
+- **Modules d'intégration** dédiés pour Bull et BullMQ
+- **Tests de queue** avec exemples concrets
+
 ## 🏗️ Architecture
 
 La librairie suit une architecture modulaire basée sur les patterns **Event-Driven Architecture**, **Publisher-Subscriber** et **Handler Pattern**. Elle supporte deux approches complémentaires :

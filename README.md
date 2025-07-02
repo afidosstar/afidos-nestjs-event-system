@@ -9,12 +9,13 @@ Une librairie moderne et extensible pour gérer les notifications d'événements
 - **📧 Providers simplifiés** - Email, Telegram, Webhook, Teams ultra-simples + template providers dédiés
 - **🎯 RecipientLoader** - Résolution dynamique des destinataires
 - **🔍 Auto-découverte** - Décorateurs `@InjectableNotifier` et `@InjectableHandler` pour découverte automatique
-- **⚡ Gestion intelligente des queues** - Modes `api`, `worker`, `hybrid` avec Redis
+- **⚡ Gestion intelligente des queues** - Modes `api`, `worker`, `hybrid` avec FileQueueProvider (par défaut) ou Redis
 - **⚙️ Configuration simplifiée** - Plus besoin de configuration manuelle des providers
 - **🎯 Event Handler System** - Pattern handlers pour logique métier (analytics, audit, workflows)
 - **🔄 Dual Processing** - Notifications externes + Handlers métier en parallèle
 - **🧪 Tests complets** - Couverture > 80% avec 43 tests unitaires
 - **🚀 Provider Teams** - Support Microsoft Teams avec Adaptive Cards
+- **📁 FileQueueProvider** - Broker simple basé sur fichiers (pas de Redis requis)
 
 
 ## 📦 Installation
@@ -244,7 +245,10 @@ import { eventTypesConfig } from './config';
 
 @Module({
     imports: [
-        EventNotificationsModule.forRoot<MyAppEvents>(packageConfig)  // ← Configuration simplifiée
+        EventNotificationsModule.forRoot<MyAppEvents>({
+            config: packageConfig,
+            recipientLoader: StaticRecipientLoader  // ← Nouvelle API
+        })
     ],
     providers: [
         // Drivers
@@ -260,9 +264,6 @@ import { eventTypesConfig } from './config';
                 }
             })
         },
-        
-        // Recipient loader
-        StaticRecipientLoader,
         
         // Providers avec auto-découverte
         EmailProvider,     // ← Plus besoin de factory!
@@ -704,8 +705,201 @@ REDIS_PASSWORD=optional
 
 # Webhooks
 WEBHOOK_URL=https://your-webhook-url.com
+
+# FileQueueProvider (optionnel)
+QUEUE_DATA_DIR=./custom-queue-data
 ```
 
+## 📁 FileQueueProvider - Broker Simple Sans Redis
+
+### 🚀 Nouveauté v2.2.0
+
+Le **FileQueueProvider** est un broker de queue simple qui utilise le **système de fichiers** pour la persistance des jobs. Il est parfait pour le développement, les tests et les applications avec des charges légères.
+
+### ✨ Avantages
+
+- **🚀 Démarrage immédiat** - Aucune infrastructure externe requise
+- **📁 Debug facile** - Jobs visibles dans des fichiers JSON 
+- **🔧 Configuration zéro** - Fonctionne out-of-the-box
+- **📊 Monitoring simple** - Inspection visuelle des queues
+- **🐳 Déploiement léger** - Pas de Redis à gérer
+
+### 🔧 Configuration et Usage
+
+#### Configuration par Défaut
+
+Par défaut, le **FileQueueProvider** est automatiquement utilisé quand aucun provider custom n'est spécifié :
+
+```typescript
+// Utilise automatiquement FileQueueProvider
+EventNotificationsModule.forRoot<MyAppEvents>({
+    config: packageConfig,
+    recipientLoader: StaticRecipientLoader
+    // queueProvider omis = FileQueueProvider par défaut
+})
+```
+
+#### Configuration Personnalisée
+
+```typescript
+import { FileQueueProvider } from '@afidos/nestjs-event-notifications';
+
+EventNotificationsModule.forRoot<MyAppEvents>({
+    config: packageConfig,
+    recipientLoader: StaticRecipientLoader,
+    queueProvider: FileQueueProvider  // Explicite
+})
+```
+
+#### Variables d'Environnement
+
+```bash
+# Répertoire de stockage des fichiers de queue
+QUEUE_DATA_DIR=./queue-data
+
+# Configuration du nom de queue (optionnel)
+QUEUE_PREFIX=my-app-notifications
+```
+
+### 📊 Structure des Fichiers de Queue
+
+Les jobs sont stockés dans des fichiers JSON :
+
+```json
+// ./queue-data/notifications-queue.json
+[
+  {
+    "id": "file-job-1751458285777-rpd6xekry",
+    "name": "process-notification", 
+    "data": {
+      "eventId": "evt_1751458285777_gzy9p5y10",
+      "eventType": "user.created",
+      "payload": {
+        "id": 123,
+        "email": "user@example.com",
+        "firstName": "John",
+        "lastName": "Doe"
+      },
+      "correlationId": "cor_1751458285777_ifx3p0v2q"
+    },
+    "status": "completed",           // waiting, active, completed, failed
+    "attempts": 1,
+    "maxAttempts": 3,
+    "createdAt": "2025-07-02T12:11:25.777Z",
+    "processingStartedAt": "2025-07-02T12:11:26.686Z",
+    "completedAt": "2025-07-02T12:11:29.119Z",
+    "result": [
+      {
+        "channel": "email",
+        "provider": "EmailProvider",
+        "status": "sent",
+        "sentAt": "2025-07-02T12:11:28.435Z",
+        "metadata": {
+          "messageId": "<4f19e25e-f010-4148-6aab-aeed37279fad@example.com>",
+          "recipientCount": 1,
+          "accepted": ["customer@example.com"]
+        }
+      }
+    ]
+  }
+]
+```
+
+### ⚙️ Fonctionnalités
+
+- **✅ Processing asynchrone** - Jobs traités en arrière-plan
+- **🔄 Retry automatique** - Gestion des tentatives avec backoff
+- **📊 Health checks** - Monitoring de l'état de la queue
+- **📈 Statistiques** - Compteurs waiting/active/completed/failed
+- **🧹 Cleanup** - Nettoyage automatique des anciens jobs
+- **⚡ Concurrence** - Support du processing parallèle
+
+### 🎯 Cas d'Usage Idéaux
+
+#### ✅ Recommandé pour :
+- **🏠 Développement local** - Pas d'infrastructure à installer
+- **🧪 Tests automatisés** - Environnements temporaires
+- **📱 Applications légères** - < 1000 jobs/heure
+- **🎯 Prototypage** - Démarrage rapide
+- **🐳 Containers simples** - Docker sans Redis
+
+#### ⚠️ À éviter pour :
+- **🚀 Production haute charge** - > 10000 jobs/heure
+- **🌐 Applications distribuées** - Plusieurs instances
+- **⚡ Latence critique** - < 100ms processing
+- **🔐 Données sensibles** - Sans chiffrement fichier
+
+### 🔄 Migration vers Redis
+
+Quand votre application grandit, migrez facilement vers Redis :
+
+```typescript
+// 1. Installer les dépendances
+npm install bull @nestjs/bull redis
+
+// 2. Configurer le module
+import { BullModule } from '@nestjs/bull';
+import { BullQueueProvider } from '@afidos/nestjs-event-notifications';
+
+@Module({
+  imports: [
+    BullModule.forRoot({
+      redis: {
+        host: 'localhost',
+        port: 6379,
+      },
+    }),
+    EventNotificationsModule.forRoot<MyAppEvents>({
+      config: packageConfig,
+      recipientLoader: StaticRecipientLoader,
+      queueProvider: BullQueueProvider  // ← Changement minimal
+    })
+  ]
+})
+```
+
+## 🆕 Nouvelle API Module (v2.2.0)
+
+### Migration de l'API
+
+**Avant (v2.1.x) :**
+```typescript
+EventNotificationsModule.forRoot<MyAppEvents>(packageConfig)
+```
+
+**Après (v2.2.0) :**
+```typescript
+EventNotificationsModule.forRoot<MyAppEvents>({
+    config: packageConfig,
+    recipientLoader: StaticRecipientLoader,
+    queueProvider?: FileQueueProvider  // Optionnel
+})
+```
+
+### ✨ Avantages de la Nouvelle API
+
+- **🔧 Configuration typée** - Meilleure type safety
+- **📦 Injection automatique** - Plus de tokens manuels
+- **🎯 Flexibilité** - QueueProvider et RecipientLoader configurables
+- **🧹 Code plus propre** - Moins de boilerplate
+
+### 🔒 Interface Recipient Extensible
+
+Déclarez vos propriétés personnalisées :
+
+```typescript
+// Dans votre provider ou loader
+declare module '@afidos/nestjs-event-notifications' {
+    interface Recipient {
+        email?: string;
+        firstName?: string;
+        lastName?: string;
+        telegramId?: string;
+        webhookUrl?: string;
+        customProperty?: string;  // ← Vos propriétés
+    }
+}
+```
 
 ## 📚 Exemple Complet
 

@@ -5,6 +5,7 @@
 
 
 import {RecipientDistribution, RecipientLoader} from "../loaders/recipient-loader.interface";
+import {InjectionToken, Provider, Type} from "@nestjs/common";
 
 /**
  * Interface de base que l'utilisateur étend pour définir ses types d'événements
@@ -14,6 +15,27 @@ export interface EventPayloads {
     // Exemple d'usage dans l'app consommatrice:
     // 'user.create': { userId: number; email: string; };
     // 'order.completed': { orderId: string; amount: number; };
+}
+
+export type NotificationModuleOptions<T extends EventPayloads = EventPayloads>  = {
+    config: PackageConfig<T>,
+    recipientLoader?: Type<RecipientLoader>;
+    queueProvider?: Type<QueueProvider>;
+}
+
+export type NotificationModuleOptionsWithoutMode<T extends EventPayloads = EventPayloads>  = {
+    config: Omit<PackageConfig<T>,'mode'>,
+    recipientLoader?: Type<RecipientLoader>;
+    queueProvider?: Type<QueueProvider>;
+}
+
+export type NotificationModuleAsyncOptions<T extends EventPayloads = EventPayloads>  = {
+    useFactory: (...args: any[]) => Promise<PackageConfig<T>> | PackageConfig<T>;
+    recipientLoader?: Type<RecipientLoader>;
+    queueProvider?: Type<QueueProvider>;
+    mode?: PackageConfig['mode'],
+    inject?: any [];
+    isGlobal?: boolean
 }
 
 /**
@@ -38,6 +60,9 @@ export type EventPriority = 'low' | 'normal' | 'high' | 'critical';
 export interface EventTypeConfig {
     /** Description du type d'événement */
     description: string;
+
+    /** Description du type d'événement */
+    loader?: InjectionToken;
 
     /** Description du type d'événement */
     subject?: string;
@@ -381,3 +406,12 @@ export interface SystemEvent {
     /** Niveau de sévérité */
     severity: 'info' | 'warning' | 'error' | 'critical';
 }
+
+export interface QueueProvider {
+    add(jobName: string, data: any, options?: any): Promise<any>;
+    process(jobName: string, processorOrConcurrency: number | ((job: any) => Promise<any>), processor?: (job: any) => Promise<any>): Promise<void>;
+    isHealthy(): Promise<boolean>;
+    close(): Promise<void>;
+    getStats?(): Promise<any>;
+}
+

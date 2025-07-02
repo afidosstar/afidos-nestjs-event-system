@@ -2,7 +2,8 @@ import { Injectable, Logger, OnModuleInit, OnModuleDestroy, Inject, forwardRef }
 import { ModuleRef } from '@nestjs/core';
 import { EventHandler } from '../interfaces/event-handler.interface';
 import { HandlerQueueConfig, QueuedHandlerJob, EventHandlerContext } from '../types/handler-queue.types';
-import { QueueManagerService, QueueProvider } from './queue-manager.service';
+import { QueueManagerService } from './queue-manager.service';
+import { QueueProvider } from '../types/interfaces';
 import { EVENT_NOTIFICATIONS_CONFIG } from '../module/event-notifications.module';
 import { PackageConfig } from '../types/interfaces';
 

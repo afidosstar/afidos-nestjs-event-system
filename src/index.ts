@@ -12,6 +12,11 @@ export { QueueManagerService } from './services/queue-manager.service';
 export { EventHandlerManagerService } from './services/event-handler-manager.service';
 export { HandlerQueueManagerService } from './services/handler-queue-manager.service';
 
+// ========== QUEUE PROVIDERS ==========
+export { BullQueueProvider } from './queue/bull-queue.provider';
+export { BullMQQueueProvider } from './queue/bullmq-queue.provider';
+export { FileQueueProvider } from './queue/file-queue.provider';
+
 // ========== INTERFACES ==========
 // Event Handlers
 export { EventHandler } from './interfaces/event-handler.interface';
@@ -22,11 +27,11 @@ export {
 } from './types/handler-queue.types';
 
 // Recipients
-export { 
-    RecipientLoader, 
-    Recipient, 
-    RecipientDistribution, 
-    RecipientType 
+export {
+    RecipientLoader,
+    Recipient,
+    RecipientDistribution,
+    RecipientType
 } from './loaders/recipient-loader.interface';
 
 // ========== PROVIDERS ==========
@@ -58,7 +63,7 @@ export {
     EventTypeConfig,
     EventTypesConfig,
     PackageConfig,
-    
+
     // Types de base
     EventPayloads,
     NotificationChannel,
@@ -81,7 +86,9 @@ export {
 
     // Monitoring
     ProviderStats,
-    SystemEvent
+    SystemEvent,
+
+    QueueProvider
 } from './types/interfaces';
 
 // ========== TEMPLATE ENGINE ==========
@@ -91,7 +98,9 @@ export * from './template-engine';
 export {
     EVENT_NOTIFICATIONS_CONFIG,
     EVENT_TYPES_CONFIG,
-    PROVIDERS_CONFIG
+    PROVIDERS_CONFIG,
+    QUEUE_PROVIDER_TOKEN,
+    RECIPIENT_LOADER_TOKEN
 } from './module/event-notifications.module';
 
 

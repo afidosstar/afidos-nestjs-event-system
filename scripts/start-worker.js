@@ -5,7 +5,7 @@ const path = require('path');
 
 console.log('🚀 Starting notification worker...');
 
-const workerPath = path.join(__dirname, '../dist/workers/worker-main.js');
+const workerPath = path.join(__dirname, '../examples/basic-usage/dist/worker.js');
 const worker = spawn('node', [workerPath], {
   stdio: 'inherit',
   env: {

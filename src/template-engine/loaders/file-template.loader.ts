@@ -20,7 +20,7 @@ export class FileTemplateLoader implements TemplateLoader {
         this.templateExtension = config.templateExtension || this.getDefaultExtension();
         this.enableCache = config.enableCache !== false; // Cache activé par défaut
         this.cacheTtl = config.cacheTtl || 300000; // 5 minutes par défaut
-        
+
         this.logger.log(`FileTemplateLoader initialized with path: ${this.templatesPath}`);
     }
 
@@ -29,7 +29,7 @@ export class FileTemplateLoader implements TemplateLoader {
      */
     async load(templateName: string): Promise<string> {
         const templatePath = this.getTemplatePath(templateName);
-        
+
         try {
             // Vérifier le cache si activé
             if (this.enableCache) {
@@ -42,7 +42,7 @@ export class FileTemplateLoader implements TemplateLoader {
 
             // Charger depuis le fichier
             const content = await readFile(templatePath, 'utf-8');
-            
+
             // Mettre en cache si activé
             if (this.enableCache) {
                 await this.setCachedTemplate(templatePath, templateName, content);
@@ -62,7 +62,9 @@ export class FileTemplateLoader implements TemplateLoader {
      */
     async exists(templateName: string): Promise<boolean> {
         const templatePath = this.getTemplatePath(templateName);
-        
+
+        console.log('templatePath',templatePath);
+
         try {
             await access(templatePath);
             return true;
@@ -109,10 +111,10 @@ export class FileTemplateLoader implements TemplateLoader {
      */
     async reload(templateName: string): Promise<string> {
         const templatePath = this.getTemplatePath(templateName);
-        
+
         try {
             const content = await readFile(templatePath, 'utf-8');
-            
+
             // Mettre à jour le cache
             if (this.enableCache) {
                 await this.setCachedTemplate(templatePath, templateName, content, true);
@@ -135,7 +137,7 @@ export class FileTemplateLoader implements TemplateLoader {
         if (templateName.includes('.')) {
             return join(this.templatesPath, templateName);
         }
-        
+
         // Sinon, ajouter l'extension par défaut
         return join(this.templatesPath, `${templateName}${this.templateExtension}`);
     }
@@ -145,7 +147,7 @@ export class FileTemplateLoader implements TemplateLoader {
      */
     private async getCachedTemplate(templatePath: string, templateName: string): Promise<string | null> {
         const cached = this.templateCache.get(templateName);
-        
+
         if (!cached) {
             return null;
         }
@@ -178,14 +180,14 @@ export class FileTemplateLoader implements TemplateLoader {
      * Met un template en cache
      */
     private async setCachedTemplate(
-        templatePath: string, 
-        templateName: string, 
+        templatePath: string,
+        templateName: string,
         content: string,
         force: boolean = false
     ): Promise<void> {
         try {
             let mtime = Date.now();
-            
+
             if (!force) {
                 // Utiliser la date de modification du fichier si disponible
                 const stats = await import('fs').then(fs => fs.promises.stat(templatePath));
@@ -223,10 +225,10 @@ export class FileTemplateLoader implements TemplateLoader {
     async validateTemplatesPath(): Promise<{ isValid: boolean; error?: string }> {
         try {
             await access(this.templatesPath);
-            
+
             // Vérifier qu'on peut lire le dossier
             await readdir(this.templatesPath);
-            
+
             return { isValid: true };
         } catch (error) {
             const errorMessage = `Templates path '${this.templatesPath}' is not accessible: ${error.message}`;
@@ -241,22 +243,22 @@ export class FileTemplateLoader implements TemplateLoader {
     async watchTemplates(callback: (templateName: string) => void): Promise<void> {
         try {
             const { watch } = await import('fs');
-            
+
             watch(this.templatesPath, { recursive: true }, (eventType, filename) => {
                 if (filename && filename.endsWith(this.templateExtension)) {
                     const templateName = filename.replace(this.templateExtension, '');
-                    
+
                     // Invalider le cache
                     if (this.templateCache.has(templateName)) {
                         this.templateCache.delete(templateName);
                         this.logger.debug(`Cache invalidated for modified template '${templateName}'`);
                     }
-                    
+
                     // Notifier le callback
                     callback(templateName);
                 }
             });
-            
+
             this.logger.log('Template file watching enabled');
         } catch (error) {
             this.logger.warn(`Could not setup template file watching: ${error.message}`);

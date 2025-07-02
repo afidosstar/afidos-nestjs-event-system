@@ -1,6 +1,6 @@
 {
     "name": "@afidos/nestjs-event-notifications",
-    "version": "2.1.6",
+    "version": "2.2.0",
     "description": "Enterprise-grade event and notification system for NestJS applications",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
@@ -33,7 +33,7 @@
         "release": "semantic-release",
         "release:dry": "semantic-release --dry-run",
         "worker": "node scripts/start-worker.js",
-        "worker:dev": "nodemon --exec \"ts-node -r tsconfig-paths/register\" src/workers/worker-main.ts",
+        "worker:dev": "ts-node -r tsconfig-paths/register examples/basic-usage/src/worker.ts",
         "worker:build": "tsc && node scripts/start-worker.js",
         "example:install": "npm install",
         "example:dev": "npm run build && npm run example:start:dev",
@@ -65,6 +65,7 @@
     },
     "dependencies": {
         "@nestjs/config": "^4.0.2",
+        "@nestjs/devtools-integration": "^0.2.0",
         "axios": "^1.5.0",
         "joi": "^17.9.0",
         "uuid": "^9.0.0"

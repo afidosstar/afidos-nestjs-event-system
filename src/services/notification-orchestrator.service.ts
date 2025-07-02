@@ -6,10 +6,10 @@ import {
     NotificationContext,
     NotificationProvider, EventTypeConfig
 } from '../types/interfaces';
-import {Recipient, RecipientDistribution, RecipientLoader, RecipientType} from '../loaders/recipient-loader.interface';
-import {getNotifierMetadata, NotifierRegistry} from '../decorators/injectable-notifier.decorator';
-import { EVENT_TYPES_CONFIG } from '../module/event-notifications.module';
-import {BaseNotificationProvider} from "../providers/base-notification-provider";
+import { RecipientDistribution, RecipientLoader} from '../loaders/recipient-loader.interface';
+import { NotifierRegistry} from '../decorators/injectable-notifier.decorator';
+import { EVENT_TYPES_CONFIG, RECIPIENT_LOADER_TOKEN } from '../module/event-notifications.module';
+
 
 /**
  * Service d'orchestration des notifications
@@ -27,7 +27,7 @@ export class NotificationOrchestratorService {
     constructor(
         @Inject(forwardRef(() => EVENT_TYPES_CONFIG)) private readonly eventTypesConfig: EventTypesConfig,
         private readonly moduleRef: ModuleRef,
-        @Optional() private readonly recipientLoader?: RecipientLoader
+        @Optional() @Inject(forwardRef(() => RECIPIENT_LOADER_TOKEN)) private readonly recipientLoader?: RecipientLoader
     ) {}
 
     /**
@@ -48,13 +48,15 @@ export class NotificationOrchestratorService {
                 return [];
             }
 
+            console.log("this.recipientLoader",this.recipientLoader);
+            const recipientLoader = this.extractLoader(eventConfig.loader,this.recipientLoader);
             // 2. Charge les destinataires pour cet événement
-            if (!this.recipientLoader) {
+            if (!recipientLoader) {
                 this.logger.warn(`Aucun RecipientLoader configuré pour l'événement: ${eventType}`);
                 return [];
             }
 
-            const distributions = await this.recipientLoader.load(eventType, payload);
+            const distributions = await recipientLoader.load(eventType, payload);
             if (!distributions || distributions.length === 0) {
                 this.logger.warn(`Aucun destinataire trouvé pour l'événement: ${eventType}`);
                 return [];
@@ -110,6 +112,14 @@ export class NotificationOrchestratorService {
                 `Erreur lors du traitement de l'événement ${eventType} (${duration}ms): ${error.message}`
             );
             throw error;
+        }
+    }
+
+    private extractLoader(tokenLoader: EventTypeConfig['loader'],defaultLoader:RecipientLoader) {
+        try {
+            return this.moduleRef.get(tokenLoader??RECIPIENT_LOADER_TOKEN, {strict: false, each: undefined})??defaultLoader
+        }catch (e){
+            return defaultLoader;
         }
     }
 

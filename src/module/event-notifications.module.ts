@@ -1,6 +1,6 @@
-import { DynamicModule, Module, forwardRef } from '@nestjs/common';
+import {DynamicModule, Module, forwardRef, Logger, Provider} from '@nestjs/common';
 import {
-    EventPayloads,
+    EventPayloads, NotificationModuleAsyncOptions, NotificationModuleOptions, NotificationModuleOptionsWithoutMode,
     PackageConfig,
 } from '../types/interfaces';
 
@@ -10,14 +10,92 @@ import { NotificationOrchestratorService } from '../services/notification-orches
 import { QueueManagerService } from '../services/queue-manager.service';
 import { HandlerQueueManagerService } from '../services/handler-queue-manager.service';
 import { EventHandlerManagerService } from '../services/event-handler-manager.service';
+import { QueueProvider } from '../types/interfaces';
 
 
 /**
- * Configuration tokens pour l'injection de dépendances
+ * Configuration tokens pour l'injection de dépendances (Symboles)
  */
-export const EVENT_NOTIFICATIONS_CONFIG = 'EVENT_NOTIFICATIONS_CONFIG';
-export const EVENT_TYPES_CONFIG = 'EVENT_TYPES_CONFIG';
-export const PROVIDERS_CONFIG = 'PROVIDERS_CONFIG';
+export const EVENT_NOTIFICATIONS_CONFIG = Symbol('EVENT_NOTIFICATIONS_CONFIG');
+export const EVENT_TYPES_CONFIG = Symbol('EVENT_TYPES_CONFIG');
+export const PROVIDERS_CONFIG = Symbol('PROVIDERS_CONFIG');
+export const QUEUE_PROVIDER_TOKEN = Symbol('QUEUE_PROVIDER_TOKEN');
+export const RECIPIENT_LOADER_TOKEN = Symbol('RECIPIENT_LOADER_TOKEN');
+
+/**
+ * Factory pour créer le QueueProvider selon la configuration
+ * Utilise un simple File Queue Provider basé sur le système de fichiers
+ */
+async function createQueueProvider(config: PackageConfig): Promise<QueueProvider | null> {
+    if (!config.queue) {
+        return null;
+    }
+
+    const logger = new Logger('QueueProviderFactory');
+
+    try {
+        // Importer dynamiquement le FileQueueProvider
+        const { FileQueueProvider } = await import('../queue/file-queue.provider');
+
+        // Configuration du répertoire de données
+        const queueName = config.queue.prefix || 'notifications';
+        const dataDir = process.env.QUEUE_DATA_DIR || './queue-data';
+
+        // Créer le provider de fichier
+        const fileQueueProvider = FileQueueProvider.create(queueName, dataDir);
+
+        logger.log(`📁 File Queue Provider created: ${queueName} in ${dataDir}`);
+
+        return fileQueueProvider;
+
+    } catch (error) {
+        logger.error(`Failed to create File Queue Provider: ${error.message}`);
+
+        // Fallback vers un mock simple en cas d'erreur
+        logger.warn('Falling back to mock queue provider');
+        return {
+            async add(jobName: string, data: any, options?: any): Promise<any> {
+                logger.log(`Mock Queue: Job ${jobName} ajouté`);
+                return { id: `mock-job-${Date.now()}` };
+            },
+
+            async process(jobName: string, processorOrConcurrency: number | ((job: any) => Promise<any>), processor?: (job: any) => Promise<any>): Promise<void> {
+                logger.log(`Mock Queue: Processor enregistré pour ${jobName}`);
+            },
+
+            async isHealthy(): Promise<boolean> {
+                return true;
+            },
+
+            async close(): Promise<void> {
+                logger.log('Mock Queue: Fermée');
+            }
+        };
+    }
+}
+
+/**
+ * Factory pour créer un mock RecipientLoader avec avertissement
+ */
+function createMockRecipientLoader(): any {
+    const logger = new Logger('RecipientLoaderFactory');
+
+    logger.warn(
+        '⚠️ AVERTISSEMENT: Aucun RECIPIENT_LOADER_TOKEN configuré dans les providers. ' +
+        'Un mock est utilisé qui retournera une liste vide. ' +
+        'Configurez un RecipientLoader réel dans votre module pour recevoir des notifications.'
+    );
+
+    return {
+        async load(eventType: string, payload: any): Promise<any[]> {
+            logger.warn(
+                `Mock RecipientLoader: Aucun destinataire trouvé pour l'événement ${eventType}. ` +
+                'Configurez un vrai RecipientLoader pour recevoir des notifications.'
+            );
+            return [];
+        }
+    };
+}
 
 /**
  * Module principal pour les notifications d'événements
@@ -29,18 +107,18 @@ export class EventNotificationsModule {
      * Configuration statique
      */
     static forRoot<T extends EventPayloads = EventPayloads>(
-        config: PackageConfig<T>
+        options: NotificationModuleOptions
     ): DynamicModule {
         return {
             module: EventNotificationsModule,
             providers: [
                 {
                     provide: EVENT_NOTIFICATIONS_CONFIG,
-                    useValue: config,
+                    useValue: options.config,
                 },
                 {
                     provide: EVENT_TYPES_CONFIG,
-                    useValue: config.eventTypes,
+                    useValue: options.config.eventTypes,
                 },
                 {
                     provide: NotificationOrchestratorService,
@@ -62,6 +140,19 @@ export class EventNotificationsModule {
                     provide: EventEmitterService,
                     useClass: EventEmitterService,
                 },
+                ...(options.queueProvider ?
+                        [{provide: QUEUE_PROVIDER_TOKEN,useClass: options.queueProvider}] :
+                    [{
+                        provide: QUEUE_PROVIDER_TOKEN,
+                        useFactory: async (config: PackageConfig) => createQueueProvider(config),
+                        inject: [EVENT_NOTIFICATIONS_CONFIG],
+                    }]
+                ),
+
+                ...(options.recipientLoader ?
+                        [{provide: RECIPIENT_LOADER_TOKEN, useClass: options.recipientLoader}]:
+                        [{ provide: RECIPIENT_LOADER_TOKEN, useFactory: () =>  createMockRecipientLoader()}]
+                )
             ],
             exports: [
                 EventEmitterService,
@@ -79,46 +170,44 @@ export class EventNotificationsModule {
     /**
      * Configuration asynchrone
      */
-    static forRootAsync<T extends EventPayloads = EventPayloads>(options: {
-        useFactory: (...args: any[]) => Promise<PackageConfig<T>> | PackageConfig<T>;
-        inject?: any[];
-    }): DynamicModule {
+    static forRootAsync<T extends EventPayloads = EventPayloads>(options: NotificationModuleAsyncOptions): DynamicModule {
         return {
             module: EventNotificationsModule,
             providers: [
                 {
                     provide: EVENT_NOTIFICATIONS_CONFIG,
-                    useFactory: options.useFactory,
-                    inject: options.inject || [],
-                },
-                {
-                    provide: EVENT_TYPES_CONFIG,
                     useFactory: async (...args: any[]) => {
                         const config = await options.useFactory(...args);
-                        return config.eventTypes;
+                        config.mode = options.mode ?? 'hybrid';
+                        return config;
                     },
                     inject: options.inject || [],
                 },
                 {
-                    provide: NotificationOrchestratorService,
-                    useClass: NotificationOrchestratorService,
+                    provide: EVENT_TYPES_CONFIG,
+                    useFactory: (config) => {
+                        return config.eventTypes;
+                    },
+                    inject: [EVENT_NOTIFICATIONS_CONFIG],
                 },
-                {
-                    provide: QueueManagerService,
-                    useClass: QueueManagerService,
-                },
-                {
-                    provide: HandlerQueueManagerService,
-                    useClass: HandlerQueueManagerService,
-                },
-                {
-                    provide: EventHandlerManagerService,
-                    useClass: EventHandlerManagerService,
-                },
-                {
-                    provide: EventEmitterService,
-                    useClass: EventEmitterService,
-                },
+                EventEmitterService,
+                NotificationOrchestratorService,
+                QueueManagerService,
+                HandlerQueueManagerService,
+                EventHandlerManagerService,
+                ...(options.queueProvider ?
+                        [{provide: QUEUE_PROVIDER_TOKEN,useClass: options.queueProvider}] :
+                        [{
+                            provide: QUEUE_PROVIDER_TOKEN,
+                            useFactory: async (config: PackageConfig) => createQueueProvider(config),
+                            inject: [EVENT_NOTIFICATIONS_CONFIG],
+                        }]
+                ),
+
+                ...(options.recipientLoader ?
+                        [{provide: RECIPIENT_LOADER_TOKEN, useClass: options.recipientLoader}]:
+                        [{ provide: RECIPIENT_LOADER_TOKEN, useFactory: () =>  createMockRecipientLoader()}]
+                )
             ],
             exports: [
                 EventEmitterService,
@@ -129,157 +218,37 @@ export class EventNotificationsModule {
                 EVENT_NOTIFICATIONS_CONFIG,
                 EVENT_TYPES_CONFIG,
             ],
-            global: true
+            global: options.isGlobal ?? true
         };
     }
 
     /**
      * Configuration pour workers (mode worker uniquement)
      */
-    static forWorker<T extends EventPayloads = EventPayloads>(
-        config: PackageConfig<T>
-    ): DynamicModule {
-
-        return {
-            module: EventNotificationsModule,
-            providers: [
-                {
-                    provide: EVENT_NOTIFICATIONS_CONFIG,
-                    useValue: config,
-                },
-                {
-                    provide: EVENT_TYPES_CONFIG,
-                    useValue: config.eventTypes,
-                },
-                EventEmitterService,
-                NotificationOrchestratorService,
-                QueueManagerService,
-                HandlerQueueManagerService,
-                EventHandlerManagerService,
-            ],
-            exports: [
-                EventEmitterService,
-                NotificationOrchestratorService,
-                QueueManagerService,
-                HandlerQueueManagerService,
-                EventHandlerManagerService,
-                EVENT_NOTIFICATIONS_CONFIG,
-                EVENT_TYPES_CONFIG,
-            ],
-            global: true
-        };
+    static forWorker<T extends EventPayloads = EventPayloads>(options: NotificationModuleOptionsWithoutMode): DynamicModule {
+        (options.config as PackageConfig<T>).mode = 'worker';
+        return this.forRoot(options as NotificationModuleOptions);
     }
 
     /**
      * Configuration pour mode API uniquement (pas de queues)
      */
-    static forApi<T extends EventPayloads = EventPayloads>(
-        config: PackageConfig<T>
-    ): DynamicModule {
-
-        return {
-            module: EventNotificationsModule,
-            providers: [
-                {
-                    provide: EVENT_NOTIFICATIONS_CONFIG,
-                    useValue: config,
-                },
-                {
-                    provide: EVENT_TYPES_CONFIG,
-                    useValue: config.eventTypes,
-                },
-                EventEmitterService,
-                NotificationOrchestratorService,
-                EventHandlerManagerService,
-            ],
-            exports: [
-                EventEmitterService,
-                NotificationOrchestratorService,
-                EventHandlerManagerService,
-                EVENT_NOTIFICATIONS_CONFIG,
-                EVENT_TYPES_CONFIG,
-            ],
-            global: true
-        };
+    static forApi<T extends EventPayloads = EventPayloads>(options: NotificationModuleOptionsWithoutMode): DynamicModule {
+        (options.config as PackageConfig<T>).mode = 'api';
+        return this.forRoot(options as NotificationModuleOptions);
     }
 
     /**
      * Configuration asynchrone pour mode Worker uniquement
      */
-    static forWorkerAsync<T extends EventPayloads = EventPayloads>(options: {
-        useFactory: (...args: any[]) => Promise<PackageConfig<T>> | PackageConfig<T>;
-        inject?: any[];
-    }): DynamicModule {
-        return {
-            module: EventNotificationsModule,
-            providers: [
-                {
-                    provide: EVENT_NOTIFICATIONS_CONFIG,
-                    useFactory: options.useFactory,
-                    inject: options.inject || [],
-                },
-                {
-                    provide: EVENT_TYPES_CONFIG,
-                    useFactory: async (...args: any[]) => {
-                        const config = await options.useFactory(...args);
-                        return config.eventTypes;
-                    },
-                    inject: options.inject || [],
-                },
-                EventEmitterService,
-                NotificationOrchestratorService,
-                QueueManagerService,
-                HandlerQueueManagerService,
-                EventHandlerManagerService,
-            ],
-            exports: [
-                EventEmitterService,
-                NotificationOrchestratorService,
-                QueueManagerService,
-                HandlerQueueManagerService,
-                EventHandlerManagerService,
-                EVENT_NOTIFICATIONS_CONFIG,
-                EVENT_TYPES_CONFIG,
-            ],
-            global: true
-        };
+    static forWorkerAsync<T extends EventPayloads = EventPayloads>(options: NotificationModuleAsyncOptions): DynamicModule {
+        return this.forRootAsync(options);
     }
 
     /**
      * Configuration asynchrone pour mode API uniquement
      */
-    static forApiAsync<T extends EventPayloads = EventPayloads>(options: {
-        useFactory: (...args: any[]) => Promise<PackageConfig<T>> | PackageConfig<T>;
-        inject?: any[];
-    }): DynamicModule {
-        return {
-            module: EventNotificationsModule,
-            providers: [
-                {
-                    provide: EVENT_NOTIFICATIONS_CONFIG,
-                    useFactory: options.useFactory,
-                    inject: options.inject || [],
-                },
-                {
-                    provide: EVENT_TYPES_CONFIG,
-                    useFactory: async (...args: any[]) => {
-                        const config = await options.useFactory(...args);
-                        return config.eventTypes;
-                    },
-                    inject: options.inject || [],
-                },
-                EventEmitterService,
-                NotificationOrchestratorService,
-                EventHandlerManagerService,
-            ],
-            exports: [
-                EventEmitterService,
-                NotificationOrchestratorService,
-                EventHandlerManagerService,
-                EVENT_NOTIFICATIONS_CONFIG,
-                EVENT_TYPES_CONFIG,
-            ],
-            global: true
-        };
+    static forApiAsync<T extends EventPayloads = EventPayloads>(options: NotificationModuleAsyncOptions): DynamicModule {
+        return this.forRootAsync(options)
     }
 }

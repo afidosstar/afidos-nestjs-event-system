@@ -1,6 +1,17 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { RecipientLoader, Recipient, RecipientDistribution, RecipientType } from '@afidos/nestjs-event-notifications';
 
+// Extension de l'interface Recipient pour le StaticRecipientLoader
+declare module '@afidos/nestjs-event-notifications' {
+    interface Recipient {
+        email?: string;
+        firstName?: string;
+        lastName?: string;
+        telegramId?: string;
+        webhookUrl?: string;
+    }
+}
+
 /**
  * Loader de destinataires statique pour l'exemple
  * En production, ceci pourrait être remplacé par un loader qui va chercher
@@ -97,7 +108,7 @@ export class StaticRecipientLoader implements RecipientLoader {
             const recipients = loader(payload);
 
             // Filtrer les destinataires selon leurs préférences
-            const enabledRecipients = recipients.filter(recipient => 
+            const enabledRecipients = recipients.filter(recipient =>
                 recipient.preferences?.enabled !== false
             );
 
@@ -143,7 +154,7 @@ export class StaticRecipientLoader implements RecipientLoader {
                 telegramId: process.env.TECH_TELEGRAM_ID,
                 preferences: { enabled: true }
             }
-        ].filter(admin => 
+        ].filter(admin =>
             // Inclure seulement les admins qui ont au moins un moyen de contact configuré
             admin.email || admin.telegramId || admin.webhookUrl
         );
@@ -189,7 +200,7 @@ export class StaticRecipientLoader implements RecipientLoader {
      */
     getConfiguration(): Record<string, string[]> {
         const config: Record<string, string[]> = {};
-        
+
         Object.keys(this.eventRecipients).forEach(eventType => {
             try {
                 const recipients = this.eventRecipients[eventType]({});

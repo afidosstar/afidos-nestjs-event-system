@@ -14,7 +14,6 @@ import {OrderModule} from "./order/order.module";
 import {EventTypesModule} from "./event-types/event-types.module";
 import {CommandsModule} from "./commands/commands.module";
 import {HealthController} from "./health/health.controller";
-import {EmailProvider} from "./notifications/providers/email/email.provider";
 import {CustomMailerModule} from "./notifications/providers/email/mailer.module";
 import { TelegramModule } from "./notifications/providers/telegram/telegram.module";
 import { WebhookModule } from "./notifications/providers/webhook/webhook.module";
@@ -38,19 +37,23 @@ import {TeamsTemplateProvider} from "./notifications/template-providers/teams-te
       synchronize: process.env.NODE_ENV === 'development'
     }),
 
-    // Configuration du package EventNotifications 
-    EventNotificationsModule.forRoot<MyAppEvents>(packageConfig),
-    
+    // Configuration du package EventNotifications avec la nouvelle API
+    EventNotificationsModule.forRoot<MyAppEvents>({
+      config: packageConfig,
+      recipientLoader: StaticRecipientLoader
+    }),
+
     // Configuration du mailer pour l'email provider
     CustomMailerModule,
-    
+
     // Configuration des entités pour les providers
     TypeOrmModule.forFeature([EventType]),
-    
+
     UserModule,
     OrderModule,
     EventTypesModule,
     CommandsModule,
+    CustomMailerModule,
 
     // Provider Modules
     TelegramModule,
@@ -59,9 +62,6 @@ import {TeamsTemplateProvider} from "./notifications/template-providers/teams-te
   ],
   providers: [
     AppService,
-
-    // Recipient loader
-    StaticRecipientLoader,
 
     // Event Handlers
     UserAnalyticsHandler,
@@ -72,9 +72,6 @@ import {TeamsTemplateProvider} from "./notifications/template-providers/teams-te
     SmsTemplateProvider,
     WebhookTemplateProvider,
     TeamsTemplateProvider,
-
-    // Notification Providers 
-    EmailProvider
   ]
 })
 export class AppModule {}

@@ -1,7 +1,9 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { 
-    EventNotificationsModule
+import {
+    EventNotificationsModule,
+    QUEUE_PROVIDER_TOKEN,
+    RECIPIENT_LOADER_TOKEN
 } from '@afidos/nestjs-event-notifications';
 
 // Providers
@@ -16,10 +18,14 @@ import { StaticRecipientLoader } from './loaders/static-recipient.loader';
 // Configuration
 import { packageConfig, MyAppEvents } from './config';
 
+import { ConfigModule } from '@nestjs/config';
+
 // Entités (pour accès aux données si nécessaire)
 import { User } from './user/user.entity';
 import { Order } from './order/order.entity';
 import { EventType } from './entities/event-type.entity';
+import {BullModule} from "@nestjs/bullmq";
+import {BullMQQueueProvider} from '@afidos/nestjs-event-notifications/dist/queue/bullmq-queue.provider'
 
 /**
  * Module dédié au worker pour traitement asynchrone des notifications
@@ -27,18 +33,44 @@ import { EventType } from './entities/event-type.entity';
  */
 @Module({
     imports: [
+        // Configuration d'environnement
+        ConfigModule.forRoot({
+            isGlobal: true,
+        }),
+
         // Configuration TypeORM (même base que l'API)
         TypeOrmModule.forRoot({
             type: 'sqlite',
-            database: 'db.sqlite',
+            database: './db.sqlite',
             entities: [User, Order, EventType],
             synchronize: process.env.NODE_ENV !== 'production',
             logging: process.env.NODE_ENV === 'development'
         }),
+        BullModule.forRoot({
+            connection: {
+                host: process.env.REDIS_HOST || 'localhost',
+                port: parseInt(process.env.REDIS_PORT || '6379'),
+                password: process.env.REDIS_PASSWORD,
+                db: parseInt(process.env.REDIS_DB || '0'),
+                // Options spécifiques à BullMQ
+                maxRetriesPerRequest: 3,
+                retryDelayOnFailover: 100,
+                enableReadyCheck: false,
+                lazyConnect: true
+            },
+            defaultJobOptions: {
+                removeOnComplete: 100,
+                removeOnFail: 50,
+                attempts: 3,
+                backoff: {
+                    type: 'exponential',
+                    delay: 2000,
+                }
+            }
+        }),
 
         // Configuration des entités utilisées
         TypeOrmModule.forFeature([User, Order, EventType]),
-        
         // Configuration du mailer pour l'email provider
         CustomMailerModule,
 
@@ -47,33 +79,38 @@ import { EventType } from './entities/event-type.entity';
         WebhookModule,
 
         // Module des notifications en mode worker
-        EventNotificationsModule.forRoot<MyAppEvents>({
-            ...packageConfig,
-            mode: 'worker',  // ← Mode worker uniquement
-            
-            // Configuration Redis (même que l'API)
-            queue: {
-                redis: {
-                    host: process.env.REDIS_HOST || 'localhost',
-                    port: parseInt(process.env.REDIS_PORT || '6379'),
-                    password: process.env.REDIS_PASSWORD,
-                    db: parseInt(process.env.REDIS_DB || '0')
+        EventNotificationsModule.forWorker<MyAppEvents>({
+            imports:[ BullModule.registerQueue({name: 'notifications'}) ],
+            config: {
+                ...packageConfig,
+
+                // Configuration Redis (même que l'API)
+                queue: {
+                    redis: {
+                        host: process.env.REDIS_HOST || 'localhost',
+                        port: parseInt(process.env.REDIS_PORT || '6379'),
+                        password: process.env.REDIS_PASSWORD,
+                        db: parseInt(process.env.REDIS_DB || '0')
+                    },
+                    concurrency: 5,
+                    prefix: 'basic-usage-notifications',
+                    defaultJobOptions: {
+                        attempts: 3,
+                        delay: 1000,
+                        removeOnComplete: 100,
+                        removeOnFail: 50
+                    }
+                },
+
+                // Logs détaillés pour le worker
+                global: {
+                    ...packageConfig.global,
+                    enableDetailedLogs: true
                 }
             },
-
-            // Logs détaillés pour le worker
-            global: {
-                ...packageConfig.global,
-                enableDetailedLogs: true
-            }
+            recipientLoader: StaticRecipientLoader,
+            queueProvider: BullMQQueueProvider
         })
-    ],
-    providers: [
-        // Recipient loader
-        StaticRecipientLoader,
-
-        // Email provider (not in module yet)
-        EmailProvider
     ]
 })
 export class WorkerModule {}

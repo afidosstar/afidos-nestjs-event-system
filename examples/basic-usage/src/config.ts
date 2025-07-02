@@ -131,7 +131,6 @@ export const eventTypesConfig = createEventTypeConfig<MyAppEvents>({
 // 3. Configuration complète du package
 export const packageConfig = createPackageConfig<MyAppEvents>({
     eventTypes: eventTypesConfig,
-
     queue: {
         redis: {
             host: process.env.REDIS_HOST || 'localhost',
@@ -149,7 +148,7 @@ export const packageConfig = createPackageConfig<MyAppEvents>({
         }
     },
 
-    mode: 'api',
+    mode: 'hybrid',
 
     global: {
         defaultTimeout: 30000,

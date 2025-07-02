@@ -4,6 +4,7 @@ import {
     TemplateConfig,
     NotificationContext
 } from '@afidos/nestjs-event-notifications';
+import * as path from "node:path";
 
 /**
  * Interface pour les données enrichies des emails
@@ -33,7 +34,7 @@ interface EmailEnrichedData {
 @Injectable()
 @TemplateConfig({
     engine: 'handlebars',
-    templatesPath: './src/notifications/template-providers/templates/email',
+    templatesPath: path.join(__dirname,'/templates/email'),
     templateExtension: '.hbs',
     enableCache: true,
     cacheTtl: 300000, // 5 minutes

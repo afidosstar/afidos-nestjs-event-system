@@ -65,3 +65,12 @@ docker-compose*
 # Documentation
 *.md
 docs
+
+# Database files
+*.sqlite
+*.db
+*.db-journal
+
+# Queue data files
+queue-data/
+test-queue-data/

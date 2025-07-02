@@ -1,6 +1,14 @@
 # Basic Usage - NestJS Event Notifications
 
-Exemple complet d'utilisation de la librairie `@afidos/nestjs-event-notifications` avec la **nouvelle architecture v1.0.0**.
+Exemple complet d'utilisation de la librairie `@afidos/nestjs-event-notifications` avec la **nouvelle architecture v2.2.0**.
+
+## 📁 Queue Providers Disponibles
+
+Cette exemple utilise **FileQueueProvider** par défaut (aucune dépendance). Pour les alternatives Redis :
+
+- **📋 Voir [README-QUEUE-PROVIDERS.md](./README-QUEUE-PROVIDERS.md)** pour le guide complet des providers
+- **🔧 Bull Provider** : `app-with-bull.module.example.ts`
+- **🚀 BullMQ Provider** : `app-with-bullmq.module.example.ts` (recommandé production)
 
 ## 🚀 Architecture de l'Exemple (v1.0.0)
 
@@ -438,3 +446,26 @@ npm run test:cov
 - **Docker** - Containerisation API + Worker
 - **Bull** - Gestion des queues Redis
 - **Concurrently** - Développement API + Worker parallèle
+
+## 🚫 Fichiers Ignorés
+
+L'exemple est configuré pour ignorer automatiquement :
+
+### Base de données
+- `*.sqlite` - Fichiers de base de données SQLite
+- `*.db` - Fichiers de base de données génériques
+- `*.db-journal` - Fichiers de journalisation SQLite
+
+### Données de queue
+- `queue-data/` - Répertoire des jobs FileQueueProvider
+- `test-queue-data/` - Répertoire de test des queues
+
+### Configuration d'ignore
+
+Les fichiers sont ignorés dans :
+- **`.gitignore`** - Version control
+- **`.dockerignore`** - Images Docker
+- **`tsconfig.json`** - Compilation TypeScript (développement)
+- **`tsconfig.build.json`** - Build de production (Nest CLI)
+
+⚠️ **Note** : Si vous aviez déjà committé `db.sqlite`, il a été retiré du tracking git. Les nouvelles instances du fichier seront automatiquement ignorées.

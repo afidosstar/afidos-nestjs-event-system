@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { WebhookProvider } from './webhook.provider';
 import { WebhookTemplateProvider } from '../../template-providers/webhook-template.provider';
+import {TypeOrmModule} from "@nestjs/typeorm";
+import {EventType} from "../../../entities/event-type.entity";
 
 /**
  * Module dédié au provider Webhook
@@ -11,6 +13,7 @@ import { WebhookTemplateProvider } from '../../template-providers/webhook-templa
         WebhookProvider,
         WebhookTemplateProvider,
     ],
+    imports:[TypeOrmModule.forFeature([EventType])],
     exports: [
         WebhookProvider,
         WebhookTemplateProvider,

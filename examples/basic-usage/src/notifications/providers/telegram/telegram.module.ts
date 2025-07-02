@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { TelegramProvider } from './telegram.provider';
 import { TelegramTemplateProvider } from '../../template-providers/telegram-template.provider';
+import {TypeOrmModule} from "@nestjs/typeorm";
+import {EventType} from "../../../entities/event-type.entity";
 
 /**
  * Module dédié au provider Telegram
@@ -11,6 +13,7 @@ import { TelegramTemplateProvider } from '../../template-providers/telegram-temp
         TelegramProvider,
         TelegramTemplateProvider,
     ],
+    imports:[TypeOrmModule.forFeature([EventType])],
     exports: [
         TelegramProvider,
         TelegramTemplateProvider,
@@ -27,7 +30,7 @@ export class TelegramModule {
      */
     private validateTelegramConfig() {
         const botToken = process.env.TELEGRAM_BOT_TOKEN;
-        
+
         if (!botToken || botToken === '123456:ABC-DEF') {
             console.warn('⚠️  TELEGRAM_BOT_TOKEN not configured or using default value');
             console.warn('   Set TELEGRAM_BOT_TOKEN environment variable for production use');

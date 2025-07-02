@@ -710,9 +710,13 @@ WEBHOOK_URL=https://your-webhook-url.com
 QUEUE_DATA_DIR=./custom-queue-data
 ```
 
-## 📁 FileQueueProvider - Broker Simple Sans Redis
+## 📁 Queue Providers - Approche Modulaire
 
-### 🚀 Nouveauté v2.2.0
+### 🚀 Nouveauté v2.2.0 - Architecture Sans Conflit de Dépendances
+
+Le système de queue a été conçu pour éviter les **conflits de dépendances** entre providers. Seul le **FileQueueProvider** est exporté par défaut car il ne nécessite aucune dépendance externe.
+
+### 🎯 FileQueueProvider (Par Défaut)
 
 Le **FileQueueProvider** est un broker de queue simple qui utilise le **système de fichiers** pour la persistance des jobs. Il est parfait pour le développement, les tests et les applications avec des charges légères.
 
@@ -829,17 +833,29 @@ Les jobs sont stockés dans des fichiers JSON :
 - **⚡ Latence critique** - < 100ms processing
 - **🔐 Données sensibles** - Sans chiffrement fichier
 
-### 🔄 Migration vers Redis
+## 🔄 Providers Bull et BullMQ (Non Exportés)
 
-Quand votre application grandit, migrez facilement vers Redis :
+### ⚠️ Pourquoi ne sont-ils pas exportés par défaut ?
+
+Les providers **Bull** et **BullMQ** ne sont **pas exportés** dans le fichier `index.ts` pour éviter les **conflits de dépendances** :
+
+- **Bull** et **BullMQ** sont **incompatibles** entre eux dans le même projet
+- Installer les deux créerait des conflits de versions Redis
+- Chaque projet ne devrait utiliser qu'**un seul** provider Redis
+
+### 🎯 Bull Provider (Option 1)
+
+Pour utiliser **Bull** dans votre projet :
+
+```bash
+# 1. Installer les dépendances Bull
+npm install bull @nestjs/bull redis
+```
 
 ```typescript
-// 1. Installer les dépendances
-npm install bull @nestjs/bull redis
-
-// 2. Configurer le module
+// 2. Import direct depuis le fichier source
+import { BullQueueProvider } from '@afidos/nestjs-event-notifications/dist/queue/bull-queue.provider';
 import { BullModule } from '@nestjs/bull';
-import { BullQueueProvider } from '@afidos/nestjs-event-notifications';
 
 @Module({
   imports: [
@@ -852,9 +868,86 @@ import { BullQueueProvider } from '@afidos/nestjs-event-notifications';
     EventNotificationsModule.forRoot<MyAppEvents>({
       config: packageConfig,
       recipientLoader: StaticRecipientLoader,
-      queueProvider: BullQueueProvider  // ← Changement minimal
+      queueProvider: BullQueueProvider  // ← Import direct
     })
   ]
+})
+export class AppModule {}
+```
+
+### 🚀 BullMQ Provider (Option 2)
+
+Pour utiliser **BullMQ** dans votre projet :
+
+```bash
+# 1. Installer les dépendances BullMQ
+npm install bullmq @nestjs/bullmq redis
+```
+
+```typescript
+// 2. Import direct depuis le fichier source
+import { BullMQQueueProvider } from '@afidos/nestjs-event-notifications/dist/queue/bullmq-queue.provider';
+import { BullMQModule } from '@nestjs/bullmq';
+
+@Module({
+  imports: [
+    BullMQModule.forRoot({
+      connection: {
+        host: 'localhost',
+        port: 6379,
+      },
+    }),
+    EventNotificationsModule.forRoot<MyAppEvents>({
+      config: packageConfig,
+      recipientLoader: StaticRecipientLoader,
+      queueProvider: BullMQQueueProvider  // ← Import direct
+    })
+  ]
+})
+export class AppModule {}
+```
+
+### 📋 Comparaison des Providers
+
+| Provider | Dépendances | Performance | Production | Maintenance |
+|----------|-------------|-------------|------------|-------------|
+| **FileQueueProvider** | ❌ Aucune | 🟡 Légère | ⚠️ < 1K jobs/h | ✅ Active |
+| **BullQueueProvider** | `bull` + `@nestjs/bull` | 🟢 Haute | ✅ Éprouvé | ⚠️ Legacy |
+| **BullMQQueueProvider** | `bullmq` + `@nestjs/bullmq` | 🟢 Très Haute | ✅ Moderne | ✅ Active |
+
+### 🎯 Recommandations d'Usage
+
+#### FileQueueProvider - Développement/Tests
+```typescript
+// ✅ Développement local, tests, prototypage
+EventNotificationsModule.forRoot({
+  config: packageConfig,
+  recipientLoader: StaticRecipientLoader
+  // FileQueueProvider par défaut - aucune dépendance
+})
+```
+
+#### Bull - Production Legacy
+```typescript
+// ✅ Applications existantes avec Bull
+import { BullQueueProvider } from '@afidos/nestjs-event-notifications/dist/queue/bull-queue.provider';
+
+EventNotificationsModule.forRoot({
+  config: packageConfig,
+  recipientLoader: StaticRecipientLoader,
+  queueProvider: BullQueueProvider
+})
+```
+
+#### BullMQ - Production Moderne
+```typescript
+// ✅ Nouvelles applications production
+import { BullMQQueueProvider } from '@afidos/nestjs-event-notifications/dist/queue/bullmq-queue.provider';
+
+EventNotificationsModule.forRoot({
+  config: packageConfig,
+  recipientLoader: StaticRecipientLoader,
+  queueProvider: BullMQQueueProvider
 })
 ```
 

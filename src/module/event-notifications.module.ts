@@ -154,6 +154,7 @@ export class EventNotificationsModule {
                         [{ provide: RECIPIENT_LOADER_TOKEN, useFactory: () =>  createMockRecipientLoader()}]
                 )
             ],
+            imports: options.imports,
             exports: [
                 EventEmitterService,
                 NotificationOrchestratorService,
@@ -173,6 +174,7 @@ export class EventNotificationsModule {
     static forRootAsync<T extends EventPayloads = EventPayloads>(options: NotificationModuleAsyncOptions): DynamicModule {
         return {
             module: EventNotificationsModule,
+            imports: options.imports,
             providers: [
                 {
                     provide: EVENT_NOTIFICATIONS_CONFIG,

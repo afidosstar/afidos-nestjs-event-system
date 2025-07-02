@@ -134,7 +134,7 @@ export class FileTemplateLoader implements TemplateLoader {
      */
     private getTemplatePath(templateName: string): string {
         // Si le nom contient déjà l'extension, l'utiliser tel quel
-        if (templateName.includes('.')) {
+        if (templateName.includes(this.templateExtension)) {
             return join(this.templatesPath, templateName);
         }
 

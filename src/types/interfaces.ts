@@ -6,6 +6,7 @@
 
 import {RecipientDistribution, RecipientLoader} from "../loaders/recipient-loader.interface";
 import {InjectionToken, Provider, Type} from "@nestjs/common";
+import {Module} from "@nestjs/core/injector/module";
 
 /**
  * Interface de base que l'utilisateur étend pour définir ses types d'événements
@@ -19,12 +20,14 @@ export interface EventPayloads {
 
 export type NotificationModuleOptions<T extends EventPayloads = EventPayloads>  = {
     config: PackageConfig<T>,
+    imports?: any[],
     recipientLoader?: Type<RecipientLoader>;
     queueProvider?: Type<QueueProvider>;
 }
 
 export type NotificationModuleOptionsWithoutMode<T extends EventPayloads = EventPayloads>  = {
     config: Omit<PackageConfig<T>,'mode'>,
+    imports?: any[],
     recipientLoader?: Type<RecipientLoader>;
     queueProvider?: Type<QueueProvider>;
 }
@@ -33,6 +36,7 @@ export type NotificationModuleAsyncOptions<T extends EventPayloads = EventPayloa
     useFactory: (...args: any[]) => Promise<PackageConfig<T>> | PackageConfig<T>;
     recipientLoader?: Type<RecipientLoader>;
     queueProvider?: Type<QueueProvider>;
+    imports?: any[],
     mode?: PackageConfig['mode'],
     inject?: any [];
     isGlobal?: boolean

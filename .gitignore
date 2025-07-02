@@ -7,3 +7,4 @@ coverage/
 *.tsbuildinfo
 .yalc
 sessions/
+*.sqlite

@@ -13,8 +13,9 @@ export { EventHandlerManagerService } from './services/event-handler-manager.ser
 export { HandlerQueueManagerService } from './services/handler-queue-manager.service';
 
 // ========== QUEUE PROVIDERS ==========
-export { BullQueueProvider } from './queue/bull-queue.provider';
-export { BullMQQueueProvider } from './queue/bullmq-queue.provider';
+// Note: Bull et BullMQ providers ne sont pas exportés car ils nécessitent des dépendances
+// incompatibles entre elles. Utilisez FileQueueProvider (par défaut) ou importez 
+// manuellement les providers Bull/BullMQ selon vos besoins spécifiques.
 export { FileQueueProvider } from './queue/file-queue.provider';
 
 // ========== INTERFACES ==========
